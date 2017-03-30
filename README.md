@@ -6,6 +6,9 @@ This is an implementation of [ENet: A Deep Neural Network Architecture for Real-
 ## Requirements
 
 [pycocotools](https://github.com/pdollar/coco) - Follow the instructions on the page to install the MS-COCO API.
+
 opencv
+
 tensorflow
+
 [keras](https://github.com/fchollet/keras)
