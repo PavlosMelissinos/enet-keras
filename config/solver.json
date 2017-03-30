@@ -1,0 +1,9 @@
+{
+ "model_name": "enet",
+ "nb_epoch": 100,
+ "batch_size": 8,
+ "completed_epochs": 0,
+ "dh": 256,
+ "dw": 256,
+ "skip": 0
+}

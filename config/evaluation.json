@@ -1,0 +1,10 @@
+{
+    "ann_type": "segm",
+    "data_type": "val2014",
+    "dh": 256,
+    "dw": 256,
+    "nc": 81,
+    "h5file": "enet_best",
+    "model_name": "enet",
+    "test_sample_size": 500000
+}
