@@ -46,6 +46,9 @@ def predict(segmenter, imfile, target_shape):
 
 if __name__ == '__main__':
     filetxt = sys.argv[1]
+    dw = 256
+    dh = 256
+    nc = len(dataset.ids())
 
     if K.backend() == 'tensorflow':
         print('Tensorflow backend detected; Applying memory usage constraints')
