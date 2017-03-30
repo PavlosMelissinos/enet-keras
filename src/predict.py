@@ -7,6 +7,7 @@ import numpy as np
 import os
 import sys
 
+from data import mscoco as dataset
 from data.utils import normalized, basename_without_ext
 from keras import backend as K
 import models
@@ -44,20 +45,13 @@ def predict(segmenter, imfile, target_shape):
             raise
 
 if __name__ == '__main__':
-    metadata_json = sys.argv[1]
-
-    metadata = json.load(open(metadata_json))
-    dw = metadata['dw']
-    dh = metadata['dh']
-    nc = metadata['nc']
-
-    filetxt = sys.argv[2]
+    filetxt = sys.argv[1]
 
     if K.backend() == 'tensorflow':
         print('Tensorflow backend detected; Applying memory usage constraints')
         ss = K.tf.Session(config=K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True)))
         K.set_session(ss)
-        # ss.run(K.tf.global_variables_initializer())
+        ss.run(K.tf.global_variables_initializer())
 
     pw = os.path.join(os.path.dirname(solver_json), solver['pw'])
     with open(filetxt, 'r') as fin:
@@ -65,14 +59,6 @@ if __name__ == '__main__':
         files = [os.path.join(basedir, line.rstrip('\n')) for line in fin]
 
     print(pw)
-
-    dataset_name = metadata['dataset_name']
-    if dataset_name == 'yoox':
-        from data import yoox as dataset
-    elif dataset_name == 'mscoco':
-        from data import mscoco as dataset
-    else:
-        raise ValueError('Unknown dataset {}'.format(dataset_name))
 
     segmenter, model_name = autoencoder(nc=nc, input_shape=(dw, dh))
     segmenter.load_weights(pw)
