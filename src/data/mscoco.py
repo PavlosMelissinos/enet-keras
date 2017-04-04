@@ -80,12 +80,9 @@ def loadCOCO(data_dir, data_type):
     return coco
 
 
-def yield_image(data_dir, data_type, coco, target_shape=None):
+def yield_image(data_type, coco, target_shape=None):
     # anns = coco.annToMask()
     img_ids = coco.getImgIds()
-    imgs = []
-    gts = []
-    runs = 0
     use_original_dims = not target_shape
     for idx, img_id in enumerate(img_ids):
         img = coco.loadImgs(img_id)[0]
