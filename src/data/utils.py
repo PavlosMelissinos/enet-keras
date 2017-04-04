@@ -78,6 +78,21 @@ def split_alpha(bgra):
     return bgr, a
 
 
+def one_hot_to_rgb(onehot, id_to_palette):
+    rgb_label = np.zeros((onehot.shape[0], onehot.shape[1], 3))
+    # for dim in range(onehot.shape[2]):
+    #     rgb_label[onehot[:, :, dim] == 1] += 1
+
+    # if np.max(rgb_label) > 1:
+    #     print(np.max(rgb_label))
+    #     print(np.min(rgb_label))
+    #     raise ValueError('multiple annotations detected for same pixel')
+    for dim in range(onehot.shape[2]):
+        # rgb_label[onehot[:, :, dim] > 0] = dim
+        rgb_label[onehot[:, :, dim] > 0] = id_to_palette[dim]
+    return rgb_label
+
+
 # TODO: check validity
 def split_pngs(finame, foname):
     lines = []
