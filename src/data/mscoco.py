@@ -69,9 +69,6 @@ def category_to_cid_map():
 
 
 def loadCOCO(data_dir, data_type):
-    # dataset = 'data_mscoco/raw/annotations/instances_train2014.json'
-    # dataDir='data_mscoco/raw/'
-    # dataType='train2014'
     annFile = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
     coco = COCO(annFile)
     return coco

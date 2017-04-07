@@ -23,7 +23,10 @@ def autoencoder(nc, input_shape,
     enet = decoder.build(enet, nc=nc, in_shape=input_shape)
 
     # enet = Reshape((data_shape, nc), input_shape=(input_shape[0], input_shape[1], nc))(enet)
-    enet = Reshape((data_shape, nc))(enet)
+    from keras import backend as K
+    enet = K.reshape(enet, (data_shape, nc))
+    print K.int_shape(enet)
+    # enet = Reshape((data_shape, nc))(enet)  # TODO: need to remove data_shape for multi-scale training
     enet = Activation('softmax')(enet)
     model = Model(inputs=inp, outputs=enet)
 
