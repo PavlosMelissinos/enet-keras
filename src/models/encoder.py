@@ -1,5 +1,5 @@
 from keras.layers.advanced_activations import PReLU
-from keras.layers.convolutional import AtrousConvolution2D, Convolution2D, ZeroPadding2D
+from keras.layers.convolutional import Convolution2D, ZeroPadding2D
 from keras.layers.core import Permute, SpatialDropout2D
 from keras.layers.merge import add, concatenate
 from keras.layers.normalization import BatchNormalization

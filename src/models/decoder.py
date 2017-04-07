@@ -1,3 +1,4 @@
+from keras import backend as K
 from keras.layers.convolutional import Convolution2D, Deconvolution2D, UpSampling2D
 from keras.layers.core import Activation
 from keras.layers.merge import add
@@ -14,10 +15,7 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
     if not upsample:
         x = Convolution2D(internal, (3, 3), padding='same', use_bias=True)(x)
     else:
-        b, w, h, nb_filters = encoder.get_shape().as_list()
-        in_shape = x.get_shape().as_list()
-        # x = Deconvolution2D(internal, 3, 3, output_shape=(None, w * 2, h * 2, internal), border_mode='same',
-        #                     subsample=(2, 2), input_shape=in_shape)(x)
+        in_shape = K.int_shape(x)
         x = Deconvolution2D(internal, (3, 3), padding='same', strides=(2, 2), input_shape=in_shape)(x)
     x = BatchNormalization(momentum=0.1)(x)
     x = Activation('relu')(x)
@@ -42,20 +40,12 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
 
 
 def build(encoder, nc, in_shape, dropout_rate=0.1):
-    # print(encoder.get_shape().as_list())
     enet = bottleneck(encoder, 64, upsample=True, reverse_module=True)  # bottleneck 4.0
-    # print(enet.get_shape().as_list())
-    # import sys
-    # sys.exit()
     enet = bottleneck(enet, 64)  # bottleneck 4.1
     enet = bottleneck(enet, 64)  # bottleneck 4.2
     enet = bottleneck(enet, 16, upsample=True, reverse_module=True)  # bottleneck 5.0
     enet = bottleneck(enet, 16)  # bottleneck 5.1
 
-    # out_shape = enet.get_shape().as_list()
-    # out_shape = [out_shape[0], 2 * out_shape[1], 2 * out_shape[2], nc]
-    # enet = Deconvolution2D(nc, 2, 2, output_shape=out_shape, border_mode='same', subsample=(2, 2),
-    #                        input_shape=in_shape)(enet)
     enet = Deconvolution2D(nc, (2, 2), padding='same', strides=(2, 2), input_shape=in_shape)(enet)
     return enet
 

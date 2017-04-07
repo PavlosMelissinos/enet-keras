@@ -1,9 +1,7 @@
 # from __future__ import absolute_import
 from __future__ import print_function
-from collections import defaultdict
 from pycocotools.coco import COCO
 import cv2
-import os
 import numpy as np
 
 
@@ -18,11 +16,11 @@ def cids_to_ids_map():
 
 def ids():
     return [0,
-     1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 
-    18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 
-    37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 
-    54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 67, 70, 72, 73, 
-    74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
+            1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36,
+            37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53,
+            54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 67, 70, 72, 73,
+            74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
 
 
 def id_to_palette_map():
@@ -40,7 +38,6 @@ def palette_to_id_map():
 
 
 def class_weighting():
-    # weights = defaultdict(lambda: 1.5)
     weights = {i: 1.5 for i in ids()}
     weights[0] = 0.5
     return weights
@@ -75,13 +72,12 @@ def loadCOCO(data_dir, data_type):
     # dataset = 'data_mscoco/raw/annotations/instances_train2014.json'
     # dataDir='data_mscoco/raw/'
     # dataType='train2014'
-    annFile='{}/annotations/instances_{}.json'.format(data_dir, data_type)
+    annFile = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
     coco = COCO(annFile)
     return coco
 
 
-def yield_image(data_type, coco, target_shape=None):
-    # anns = coco.annToMask()
+def yield_image(coco, target_shape=None):
     img_ids = coco.getImgIds()
     use_original_dims = not target_shape
     for idx, img_id in enumerate(img_ids):
@@ -92,7 +88,6 @@ def yield_image(data_type, coco, target_shape=None):
         anns = coco.loadAnns(annIds)
         mask_one_hot = np.zeros(target_shape, dtype=np.uint8)
         mask_one_hot[:, :, 0] = 1  # every pixel begins as background
-        # mask_one_hot = cv2.resize(mask_one_hot, target_shape[:2], interpolation=cv2.INTER_NEAREST)
 
         for ann in anns:
             mask_partial = coco.annToMask(ann)
@@ -105,8 +100,6 @@ def yield_image(data_type, coco, target_shape=None):
 
 
 def mask_to_mscoco(alpha, anns, img_id, mode='rle'):
-    # mode can be poly or rle
-
     if mode == 'rle':  # not working (deepmask can't read it)
         in_ = np.reshape(np.asfortranarray(alpha), (alpha.shape[0], alpha.shape[1], 1))
         in_ = np.asfortranarray(in_)
@@ -114,7 +107,7 @@ def mask_to_mscoco(alpha, anns, img_id, mode='rle'):
         segmentation = rle[0]
     else:
         raise ValueError('Unknown mask mode "{}"'.format(mode))
-    for idx, c in enumerate(np.distinct(alpha)):
+    for idx, c in enumerate(np.unique(alpha)):
         area = mask.area(rle).tolist()
         if isinstance(area, list):
             area = area[0]

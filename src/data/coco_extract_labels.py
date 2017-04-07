@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     total = len(coco.imgs)
     idx = 0
-    for res in mscoco.yield_image(data_type, coco):
+    for res in mscoco.yield_image(coco):
         if not res:
             status = 'Skip'
         else:

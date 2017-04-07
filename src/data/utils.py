@@ -1,15 +1,19 @@
 from __future__ import absolute_import
 
 import cv2
+import errno
 import numpy as np
 import os
-from pycocotools import mask
 
 
 # I/O
 
-files_under = lambda path: [os.path.join(path, f) for f in os.listdir(path)
-                     if os.path.isfile(os.path.join(path, f))]
+def files_under(path):
+    for f in os.listdir(path):
+        item = os.path.join(path, f)
+        if os.path.isfile(item):
+            yield item
+    # return [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
 
 
 def basename_without_ext(path_to_file):
