@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+
+# dataset related resources
+data/*
+# do not ignore dataset downloader
+!data/download_mscoco.sh

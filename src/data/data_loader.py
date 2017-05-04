@@ -1,69 +1,200 @@
-import cv2
+# coding=utf-8
+from __future__ import print_function, absolute_import, division
+
 import numpy as np
 import os
+from collections import defaultdict
 from keras.utils.np_utils import to_categorical
-from utils import normalized
+from . import datasets
+from . import utils  # from .utils import load_image, pair_random_crop
 
 
-def load_data(dataset, data_dir, batch_size, nc, target_hw=(256, 256), data_type='train2014', shuffle=False, sample_size=None):
+def collect_image_files_from_disk(data_dir, data_type, sample_size=None):
+    """
+    load file list from disk in pairs
+    :param data_dir: 
+    :param data_type: 
+    :param sample_size: 
+    :return: 
+    """
     img_txt = os.path.join(data_dir, data_type, 'images.txt')
     lbl_txt = os.path.join(data_dir, data_type, 'labels.txt')
-    with open(img_txt) as imgdata, open(lbl_txt) as lbldata:
-        imgfiles = [line.rstrip('\n') for line in imgdata]
-        lblfiles = [line.rstrip('\n') for line in lbldata]
-        assert len(imgfiles) == len(lblfiles)
-        files = zip(imgfiles, lblfiles)
+    with open(img_txt) as image_data, open(lbl_txt) as label_data:
+        image_files = [os.path.join(data_dir, data_type, line.rstrip('\n')) for line in image_data]
+        label_files = [os.path.join(data_dir, data_type, line.rstrip('\n')) for line in label_data]
+        assert len(image_files) == len(label_files)
+        files = zip(image_files, label_files)
 
     if sample_size:
         assert isinstance(sample_size, int)
         np.random.shuffle(files)
         files = files[:sample_size]
-    remainder = len(files)%batch_size
-    assert remainder >= 0
+    return files
 
-    if remainder > 0:
-        yield len(files) - remainder + batch_size
+
+def sample_generator_from_disk(file_pairs, lib_format='cv2', target='numpy'):
+    # target = 'pillow' if lib_format == 'pillow' else 'numpy'
+    for img_path, lbl_path in file_pairs:
+        image = utils.load_image(img_path, lib_format=lib_format, target_type=target)
+        label = utils.load_image(lbl_path, lib_format=lib_format, target_type=target)
+        yield image, label
+
+
+def soften_targets(array, low, high):
+    assert list(set(np.unique(array)) ^ {0, 1}) == [], 'Targets must be binary'
+    array_new = np.empty_like(array)
+    array_new = np.copyto(array_new, array)
+    array_new[array == 0] = low
+    array_new[array == 1] = high
+    return array_new
+
+
+# def preprocess_image(img, mode):
+def preprocess_image(img):
+    # img = normalized(img, mode, target_type='numpy')
+    # return img
+    return img
+
+
+# def preprocess_label(lbl, mapper, nc, mode, keep_aspect_ratio=False):
+def preprocess_label(label):
+    """
+    load label image, keep a single channel (all three should be the same)
+    :param label:
+    :return:
+    """
+    # TODO: make this more robust/fast/efficient
+    # target = 'pillow' if mode == 'pillow' else 'numpy'
+    # # lbl = resize(lbl, target_h, target_w, mode=mode, target_type='numpy', keep_aspect_ratio=keep_aspect_ratio)
+    # if mode == 'pillow':
+    #     # lbl = np.expand_dims(lbl[:, :, 0], axis=2)
+    #     assert np.all(lbl[:, :, 0] == lbl[:, :, 1]) and np.all(lbl[:, :, 0] == lbl[:, :, 2])
+    #     lbl = lbl[:, :, 0].astype(np.uint8)
+    # array2d = mapper[lbl]
+    # onehot_lbl = to_categorical(array2d, num_classes=nc)
+    # return onehot_lbl
+    return label
+
+
+def load_data(mode='json', dataset_name=None,
+              data_dir=None, data_type=None,
+              target_h=None, target_w=None,
+              sample_size=None,
+              resize_mode='stretch'):
+    if mode == 'disk':
+        file_pairs = collect_image_files_from_disk(data_dir, data_type, sample_size)
+        generator = sample_generator_from_disk(file_pairs)
+        yield generator.next()
+    elif mode in ['json', None]:
+        dataset = datasets.load(dataset_name, data_dir=data_dir, data_type=data_type)
+        # generator = dataset.combined_sample_generator(target_h=target_h, target_w=target_w, sample_size=sample_size)
+        # generator = dataset.sample_generator(sample_size=sample_size)  # , target_h=target_h, target_w=target_w)
+        generator = dataset.crop_generator(sample_size=sample_size)
+        yield dataset.size
     else:
-        yield len(files)
-    rgbs = []
-    lbls = []
-    # batch_weights = []
+        raise NotImplementedError
 
-    cid_to_id_mapper = dataset.cids_to_ids_map()
-    mp = np.arange(0, max(dataset.ids()) + 1)
-    mp[cid_to_id_mapper.keys()] = cid_to_id_mapper.values()
+    forced_target_h = target_h
+    forced_target_w = target_w
+    for img, lbl in generator:
+        if not forced_target_h:
+            target_h = img.shape[0]
+        if not forced_target_w:
+            target_w = img.shape[1]
 
-    while True:
-        remainder = len(files)%batch_size
-        assert remainder >= 0
-        if shuffle:
-            np.random.shuffle(files)
-        if remainder > 0:  # Procrustes
-            files = files + files[:batch_size-remainder]
-        assert len(files) % batch_size == 0
-        for imgfile, lblfile in files:
-            img = cv2.imread(os.path.join(data_dir, data_type, imgfile))
-            img = cv2.resize(img, target_hw[:2], interpolation=cv2.INTER_NEAREST)
-            img = normalized(img)
-            rgbs.append(img)
+        if target_h > lbl.shape[0] and resize_mode != 'stretch':
+            continue
+        if target_w > lbl.shape[1] and resize_mode != 'stretch':
+            continue
 
-            # load label image, keep a single channel (all three should be the same)
-            # TODO: make this more robust/fast/efficient
-            lbl = cv2.imread(os.path.join(data_dir, data_type, lblfile))[:, :, 0]
-            lbl = cv2.resize(lbl, target_hw[:2], interpolation=cv2.INTER_NEAREST)
-            lbl = mp[lbl]
-            assert np.max(lbl) < len(dataset.ids())
-            # print('lbl shape', lbl.shape)
-            # sample_weights = np.full(lbl.shape, 0.5)
-            # print('sample weights shape', sample_weights.shape)
-            # sample_weights[lbl > 0] = 1.5 # hack just for mscoco
-            # batch_weights.append(sample_weights.ravel())
+        image = preprocess_image(img)
+        label = preprocess_label(lbl)
 
-            lbl = to_categorical(lbl, nb_classes=nc)
-            lbls.append(lbl)
+        assert image.shape[:2] == label.shape[:2]
 
-            if len(rgbs) == batch_size:
-                yield np.array(rgbs), np.array(lbls)#, np.array(batch_weights)
-                rgbs = []
-                lbls = []
-                # batch_weights = []
+        if resize_mode == 'random_crop':
+            resized_image, resized_label = utils.random_crop(x=image, y=label, crop_size=(target_h, target_w))
+        elif resize_mode == 'center_crop':
+            resized_image, resized_label = utils.center_crop(x=image, y=label, crop_size=(target_h, target_w))
+        elif resize_mode == 'stretch':
+            # TODO assumes that each label contains annotation for a single object
+            resized_image = utils.resize(item=image, target_h=target_h, target_w=target_w)
+            label = utils.one_hot_to_rgb(label, dataset.palette)
+            label.astype(np.uint8)
+
+            resized_label = utils.resize(item=label, target_h=target_h, target_w=target_w)
+            resized_label = resized_label[:, :, 0]
+            resized_label = np.eye(dataset.num_classes())[resized_label]  # convert to one hot
+        else:
+            raise NotImplementedError('unknown resize mode {}'.format(resize_mode))
+        assert resized_image.shape[:2] == resized_label.shape[:2]
+        yield resized_image, resized_label
+
+
+def batched(data_generator, batch_size, flatten=True):
+    images = []
+    labels = []
+
+    for image, label in data_generator:
+        images.append(image)
+        labels.append(label)
+        if len(images) == batch_size:
+            if flatten:
+                data_shape = labels[0].shape[0] * labels[0].shape[1]
+                nc = labels[0].shape[2]
+                # labels = np.array(labels)
+                labels = np.rollaxis(np.dstack(labels), -1)
+                labels = np.reshape(labels, (batch_size, data_shape, nc))
+            yield np.array(images), np.array(labels)  # , np.array(batch_weights)
+            images = []
+            labels = []
+
+
+# testing code for data loader
+# TODO: convert into proper unit test for the function
+
+def test():
+    np.random.seed(1337)  # for reproducibility
+
+    import sys
+    import json
+
+    full_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.append(full_path)
+
+    solver_json = '../../config/solver.json'
+
+    print('solver json: {}'.format(os.path.abspath(solver_json)))
+    solver = json.load(open(solver_json))
+    batch_size = solver['batch_size']
+    dw = solver['dw']
+    dh = solver['dh']
+
+    dataset_name = 'mscoco'
+
+    # nc = len(dataset.ids())  # categories + background
+
+    print('Preparing to train on {} data...'.format(dataset_name))
+
+    train_gen = load_data(dataset_name=dataset_name,
+                          data_dir=os.path.join('../../data', dataset_name),
+                          data_type='train2014',
+                          # batch_size=batch_size,
+                          # nc=nc,
+                          # shuffle=True,
+                          target_h=dh, target_w=dw)
+    samples = train_gen.next()
+    train_gen = batched(data_generator=train_gen, batch_size=batch_size)
+    print(samples)
+    # shapes = []
+    for idx, item in enumerate(train_gen):
+        img, lbl = item[0], item[1]
+        # shapes.append(img.shape)
+        print('Processed {} items: ({})'.format(idx + 1, type(item)), end='\r')
+        sys.stdout.flush()
+    # shapes = set(shapes)
+    # print(len(shapes))
+    # print(shapes)
+
+if __name__ == '__main__':
+    test()
