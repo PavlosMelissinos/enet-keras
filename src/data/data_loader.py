@@ -32,11 +32,11 @@ def collect_image_files_from_disk(data_dir, data_type, sample_size=None):
     return files
 
 
-def sample_generator_from_disk(file_pairs, lib_format='cv2', target='numpy'):
+def sample_generator_from_disk(file_pairs, lib_format='pillow', target='numpy'):
     # target = 'pillow' if lib_format == 'pillow' else 'numpy'
     for img_path, lbl_path in file_pairs:
-        image = utils.load_image(img_path, lib_format=lib_format, target_type=target)
-        label = utils.load_image(lbl_path, lib_format=lib_format, target_type=target)
+        image = utils.load_image(img_path)
+        label = utils.load_image(lbl_path)
         yield image, label
 
 
@@ -123,11 +123,12 @@ def load_data(mode='json', dataset_name=None,
             label.astype(np.uint8)
 
             resized_label = utils.resize(item=label, target_h=target_h, target_w=target_w)
-            resized_label = resized_label[:, :, 0]
-            resized_label = np.eye(dataset.num_classes())[resized_label]  # convert to one hot
+            resized_label = resized_label[:, :, 0].astype(dtype=np.uint8)
+            resized_label = np.eye(dataset.num_classes())[resized_label]  # convert to one hot (h, w, c)
         else:
             raise NotImplementedError('unknown resize mode {}'.format(resize_mode))
         assert resized_image.shape[:2] == resized_label.shape[:2]
+        resized_label = np.expand_dims(resized_label, axis=0)  # convert label shape to (1, h, w, c)
         yield resized_image, resized_label
 
 
@@ -135,16 +136,21 @@ def batched(data_generator, batch_size, flatten=True):
     images = []
     labels = []
 
+    counter = 0
     for image, label in data_generator:
         images.append(image)
         labels.append(label)
         if len(images) == batch_size:
+            counter += 1
             if flatten:
-                data_shape = labels[0].shape[0] * labels[0].shape[1]
-                nc = labels[0].shape[2]
+                data_shape = labels[0].shape[1] * labels[0].shape[2]
+                nc = labels[0].shape[3]
                 # labels = np.array(labels)
-                labels = np.rollaxis(np.dstack(labels), -1)
+                # labels = np.rollaxis(np.dstack(labels), -1)
+                labels = np.concatenate(labels, axis=0)
                 labels = np.reshape(labels, (batch_size, data_shape, nc))
+            images = np.array(images)
+            labels = np.array(labels)
             yield np.array(images), np.array(labels)  # , np.array(batch_weights)
             images = []
             labels = []
@@ -186,15 +192,11 @@ def test():
     samples = train_gen.next()
     train_gen = batched(data_generator=train_gen, batch_size=batch_size)
     print(samples)
-    # shapes = []
     for idx, item in enumerate(train_gen):
         img, lbl = item[0], item[1]
         # shapes.append(img.shape)
         print('Processed {} items: ({})'.format(idx + 1, type(item)), end='\r')
         sys.stdout.flush()
-    # shapes = set(shapes)
-    # print(len(shapes))
-    # print(shapes)
 
 if __name__ == '__main__':
     test()

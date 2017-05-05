@@ -2,40 +2,32 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-# import cv2
-from PIL import Image as PILImage
-# from skimage.transform import resize as sk_resize
-# from skimage import io
 import numpy as np
 import os
 import sys
 
 from data import datasets
-from data.utils import normalized, basename_without_ext
+from data.utils import normalized, basename_without_ext, pillow_invert_channels
 from keras import backend as K
 from keras.preprocessing.image import load_img, img_to_array, array_to_img
 from models import build
 
 
-def color_output_image(dataset, img):
-    colormap = dataset.id_to_palette_map()
-    cv_image = np.zeros((img.shape[0], img.shape[1], 3))
-    # cv_image = np.zeros((img.size[0], img.size[1], 3), dtype=np.uint8)
-    # img = np.asarray(img, dtype=np.uint8).reshape(img.size[0], img.size[1])
-
-    cv_image[img > 0] = 255
-    # for cid, color in colormap.iteritems():
-    #     cv_image[img == cid] = color
+def color_output_image(dataset, img, mode='bw'):
+    cv_image = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    if mode == 'bw':
+        cv_image[img > 0] = 255
+    elif mode == 'class_palette':
+        colormap = dataset.id_to_palette_map()
+        img = np.asarray(img, dtype=np.uint8).reshape(img.size[0], img.size[1])
+        for cid, color in colormap.iteritems():
+            cv_image[img == cid] = color
+    else:
+        raise ValueError('Unknown coloring mode: Expected one of {}; got {}'.format(['bw', 'class_palette'], mode))
     return cv_image
 
 
-def pillow_invert_channels(img):
-    r, g, b = img.split()
-    img = PILImage.merge("RGB", (b, g, r))
-    return img
-
-
-def predict_pillow(segmenter, image_file, h, w):
+def predict(segmenter, image_file, h, w):
     np.random.seed(1337)  # for reproducibility
     img = None
     try:
@@ -43,7 +35,7 @@ def predict_pillow(segmenter, image_file, h, w):
         ow, oh = img.size
         img = img.resize((w, h))
 
-        # TODO: temporary until cv2 is replaced and the network is retrained with rgb inputs
+        # TODO: temporary until opencv is replaced and the network is retrained with rgb inputs
         img = pillow_invert_channels(img)
 
         if img is None:
@@ -69,67 +61,10 @@ def predict_pillow(segmenter, image_file, h, w):
             raise
 
 
-# def predict_opencv(segmenter, imfile, h, w):
-#     np.random.seed(1337)  # for reproducibility
-#     try:
-#         img = cv2.imread(imfile)
-#         ow, oh = img.shape[:2]
-#
-#         if img is None:
-#             return None
-#
-#         img = cv2.resize(np.array(img, dtype=np.uint8), (w, h))
-#         img = np.expand_dims(normalized(img), axis=0)
-#         pred = segmenter.predict(img)
-#         pred = np.argmax(pred[0], axis=1)
-#         pred = np.reshape(pred, (h, w))
-#         pred = cv2.resize(pred, (ow, oh), interpolation=cv2.INTER_NEAREST)
-#         pred = color_output_image(dataset, pred)
-#         return pred
-#     except:
-#         if img is None:
-#             print('Skipping corrupted image')
-#             return None
-#         else:
-#             raise
-
-
-# def predict_skimage(segmenter, imfile, h, w):
-#     np.random.seed(1337)  # for reproducibility
-#     try:
-#         img = io.imread(imfile)
-#         oh, ow = img.shape
-#         img = sk_resize((w, h))
-#
-#         # temporary until cv2 is replaced and the network is retrained with rgb inputs
-#         img = img[:, :, ::-1]
-#
-#         if img is None:
-#             return None
-#
-#         img = np.expand_dims(normalized(img), axis=0)
-#         pred = segmenter.predict(img)
-#         pred = np.argmax(pred[0], axis=1)
-#         pred = np.reshape(pred, (h, w))
-#         pred = sk_resize(pred, (ow, oh))
-#         pred = color_output_image(dataset, pred)
-#         return pred
-#     except:
-#         if img is None:
-#             print('Skipping corrupted image')
-#             return None
-#         else:
-#             raise
-
 if __name__ == '__main__':
-    mode = 'pillow'
     filetxt = sys.argv[1]  # txt with image filenames
     pw = sys.argv[2]  # pretrained weights
     out_directory = sys.argv[3]  # output directory
-    # dw = 256
-    # dh = 256
-    # dw = None
-    # dh = None
     dataset_name = 'mscoco'
 
     dw = 480
@@ -163,16 +98,5 @@ if __name__ == '__main__':
         if os.path.isfile(out_file):
             continue
 
-        if mode == 'pillow':
-            pred_final = predict_pillow(segmenter, imfile, h=dh, w=dw)
-            # res = cv2.imwrite(out_file, pred_final)
-            pred_final.save(out_file)
-        # elif mode == 'opencv':
-        #     pred_final = predict_opencv(segmenter, imfile, h=dh, w=dw)
-            # res = cv2.imwrite(out_file, pred_final)
-        # elif mode == 'skimage':
-        #     pred_final = predict_skimage(segmenter, imfile, h=dh, w=dw)
-        #     # res = io.imsave(out_file, pred_final)
-        # break
-
-    print('')
+        pred_final = predict(segmenter, imfile, h=dh, w=dw)
+        pred_final.save(out_file)

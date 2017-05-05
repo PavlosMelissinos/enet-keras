@@ -129,14 +129,7 @@ class MSCOCO(Dataset):
                 if annotation['area'] > self._area_threshold:
                     yield annotation
 
-    def _crop_detection(self, annotation):
-        """
-        crops a pair of image label arrays according to an annotation id
-        :type annotation: dict
-        """
-
-        x, y, width, height = [int(elem + 0.5) for elem in annotation['bbox']]
-
+    def _retrieve_sample(self, annotation):
         coco_image = self._coco.loadImgs(annotation['image_id'])[0]
         image_path = os.path.join(self._data_dir['images'], coco_image['file_name'])
         image = utils.load_image(image_path)
@@ -149,6 +142,17 @@ class MSCOCO(Dataset):
         class_index = self._cid_to_id[annotation['category_id']]
         mask_categorical[ann_mask > 0, class_index] = 1
         mask_categorical[ann_mask > 0, 0] = 0  # remove background label from pixels of this (non-bg) category
+        return image, mask_categorical
+
+    def _crop_detection(self, annotation):
+        """
+        crops a pair of image label arrays according to an annotation id
+        :type annotation: dict
+        """
+
+        x, y, width, height = [int(elem + 0.5) for elem in annotation['bbox']]
+
+        image, mask_categorical = self._retrieve_sample(annotation=annotation)
 
         cropped_image = image[y: y + height, x: x + width, :]
         cropped_label = mask_categorical[y: y + height, x: x + width, :]
@@ -171,18 +175,7 @@ class MSCOCO(Dataset):
         """
 
         for annotation in self._annotation_generator(sample_size=sample_size):
-            coco_image = self._coco.loadImgs(annotation['image_id'])[0]
-            image_path = os.path.join(self._data_dir['images'], coco_image['file_name'])
-            image = utils.load_image(image_path)
-
-            ann_mask = self._coco.annToMask(annotation)
-
-            mask_categorical = np.zeros((ann_mask.shape[0], ann_mask.shape[1], self.num_classes()), dtype=np.uint8)
-            mask_categorical[:, :, 0] = 1  # every pixel begins as background
-
-            class_index = self._cid_to_id[annotation['category_id']]
-            mask_categorical[ann_mask > 0, class_index] = 1
-            mask_categorical[ann_mask > 0, 0] = 0  # remove background label from pixels of this (non-bg) category
+            image, mask_categorical = self._retrieve_sample(annotation=annotation)
             yield image, mask_categorical
 
     def combined_sample_generator(self, cover_gaps=True, target_h=None, target_w=None, sample_size=None):
