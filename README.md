@@ -68,17 +68,30 @@ TODO
 
 ### Train on MS-COCO
 
-TODO
+```./train.sh```
+
 
 
 ## Remaining tasks
 
-- [ ] Open new issue about available image processing libraries.
-- [ ] download_mscoco.sh should extract the archives to their appropriate locations
-- [ ] Upload pretrained model
-- [ ] Finalize prediction.py
-- [ ] Make data loader multithreaded
-- [ ] Remove opencv from data loader
-- [ ] Remove opencv from train.py
-- [ ] Debug train.py
-- [ ] Retrain ENet for rgb values
+- [ ] Remove opencv dependency
+  - [x] Open new issue about available image processing libraries.
+  - [x] Remove opencv calls from train.py
+  - [ ] Remove opencv calls from data loader (nearly there)
+- [ ] Clean up code
+  - [ ] Remove hardcoded paths
+  - [ ] Add documentation everywhere
+- [ ] Test code
+  - [ ] Add tests
+  - [ ] Debug train.py
+- [ ] Fix performance (mostly preprocessing bottleneck)
+  - [ ] Remove unnecessary computations in data preprocessing
+  - [ ] Index dataset category internals. Dataset categories have fields with one-to-one correspondence like id, category_id, palette, categories. This seems like perfect table structure. Might be too much though.
+  - [ ] (Optionally) Make data loader multithreaded (no idea how to approach this one, multithreadedness is handled by keras though)
+- [ ] Enhance reproducibility/usability
+  - [ ] download_mscoco.sh should extract the archives to their appropriate locations
+  - [ ] Upload pretrained model
+  - [ ] Finalize prediction.py (this might be broken, haven't tried it with the latest changes)
+    - [ ] Retrain new version of ENet for rgb values
+- [ ] Fix bugs
+  - [ ] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded, counting it in the dataset constructor and load method might suffice.
