@@ -329,10 +329,9 @@ class MSCOCOReduced(MSCOCO):
                 if annotation['area'] > self._area_threshold:
                     sample_counter += 1
         self._num_samples = sample_counter
-        print(self._num_samples)
 
     def _annotation_generator(self, sample_size=None):
         ann_generator = super(MSCOCOReduced, self)._annotation_generator(sample_size)
         for ann in ann_generator:
-            if ann['category_id'] not in MSCOCOReduced.IDS:
-                continue
+            if ann['category_id'] in MSCOCOReduced.IDS:
+                yield ann
