@@ -74,10 +74,10 @@ TODO
 
 ## Remaining tasks
 
-- [ ] Remove opencv dependency
+- [x] Remove opencv dependency
   - [x] Open new issue about available image processing libraries.
   - [x] Remove opencv calls from train.py
-  - [ ] Remove opencv calls from data loader (nearly there)
+  - [x] Remove opencv calls from data loader (nearly there)
 - [ ] Clean up code
   - [ ] Remove hardcoded paths
   - [ ] Add documentation everywhere
@@ -93,5 +93,7 @@ TODO
   - [ ] Upload pretrained model
   - [ ] Finalize prediction.py (this might be broken, haven't tried it with the latest changes)
     - [ ] Retrain new version of ENet for rgb values
+  - [ ] Add enet version with unpooling instead of naive upsampling
 - [ ] Fix bugs
-  - [ ] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded, counting it in the dataset constructor and load method might suffice.
+  - [x] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded, counting it in the dataset constructor and load method might suffice.
+  - [ ] ?????
