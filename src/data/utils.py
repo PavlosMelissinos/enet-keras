@@ -66,6 +66,15 @@ def one_hot_to_rgb(onehot, id_to_palette):
     return rgb_label
 
 
+def soften_targets(array, low=0.1, high=0.9):
+    assert list(set(np.unique(array)) ^ {0, 1}) == [], 'Targets must be binary'
+    array_new = np.empty_like(array)
+    array_new = np.copyto(array_new, array)
+    array_new[array == 0] = low
+    array_new[array == 1] = high
+    return array_new
+
+
 # misc
 
 def load_image(img_path):

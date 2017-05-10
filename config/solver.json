@@ -3,8 +3,9 @@
     "epochs": 100,
     "batch_size": 8,
     "completed_epochs": 0,
-    "dh": 352,
-    "dw": 320,
+    "dh": 512,
+    "dw": 512,
     "skip": 0,
-    "resize_mode": "stretch"
+    "resize_mode": "stretch",
+    "instance_mode": true
 }

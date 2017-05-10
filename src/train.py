@@ -9,7 +9,7 @@ import numpy as np
 import os
 
 # project scope
-from data.data_loader import load_data, batched
+from data.data_loader import load_data, batched, load_dataset
 from data import datasets
 from models import enet as model
 
@@ -64,6 +64,7 @@ def train(solver, dataset_name):
     dh = solver['dh']
 
     resize_mode = str(solver['resize_mode'])
+    instance_mode = bool(solver['instance_mode'])
 
     dataset = datasets.load(dataset_name)
     nc = dataset.num_classes()  # categories + background
@@ -89,24 +90,31 @@ def train(solver, dataset_name):
     log_dir = os.path.join(experiment_dir, 'logs')
     checkpoint_dir = os.path.join(experiment_dir, 'weights')
 
-    train_gen = load_data(dataset_name=dataset_name,
-                          data_dir=os.path.join('data', dataset_name),
+    train_dataset, train_generator = load_dataset(dataset_name=dataset_name,
+                                                  data_dir=os.path.join('data', dataset_name),
+                                                  data_type='train2014',
+                                                  instance_mode=instance_mode
+                                                  )
+    train_gen = load_data(dataset=train_dataset,
+                          generator=train_generator,
                           target_h=dh, target_w=dw,
-                          data_type='train2014',
                           resize_mode=resize_mode)
-    nb_train_samples = train_gen.next()
     train_gen = batched(train_gen, batch_size)
+    nb_train_samples = train_dataset.size
     steps_per_epoch = nb_train_samples / batch_size
 
-    val_gen = load_data(dataset_name=dataset_name,
-                        data_dir=os.path.join('data', dataset_name),
+    validation_steps = steps_per_epoch // 10
+    val_dataset, val_generator = load_dataset(dataset_name=dataset_name,
+                                              data_dir=os.path.join('data', dataset_name),
+                                              data_type='val2014',
+                                              sample_size=validation_steps*batch_size,
+                                              instance_mode=instance_mode
+                                              )
+    val_gen = load_data(dataset=val_dataset,
+                        generator=val_generator,
                         target_h=dh, target_w=dw,
-                        data_type='val2014',
-                        sample_size=nb_train_samples // 10,
                         resize_mode=resize_mode)
-    nb_val_samples = val_gen.next()  # first generator item is the count
     val_gen = batched(val_gen, batch_size)
-    validation_steps = nb_val_samples / batch_size
 
     autoencoder.fit_generator(generator=train_gen,
                               steps_per_epoch=steps_per_epoch,
@@ -115,14 +123,16 @@ def train(solver, dataset_name):
                               callbacks=callbacks(log_dir, checkpoint_dir, model_name),
                               validation_data=val_gen,
                               validation_steps=validation_steps,
-                              initial_epoch=completed_epochs)
+                              initial_epoch=completed_epochs,
+                              )
 
 
 if __name__ == '__main__':
     solver_json = 'config/solver.json'
+    dataset_name = 'mscoco'
 
     print('solver json: {}'.format(os.path.abspath(solver_json)))
 
     solver = json.load(open(solver_json))
 
-    train(solver=solver, dataset_name='mscoco')
+    train(solver=solver, dataset_name=dataset_name)

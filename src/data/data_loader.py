@@ -3,10 +3,7 @@ from __future__ import print_function, absolute_import, division
 
 import numpy as np
 import os
-from collections import defaultdict
-from keras.utils.np_utils import to_categorical
-from . import datasets
-from . import utils  # from .utils import load_image, pair_random_crop
+from . import datasets, utils
 
 
 def collect_image_files_from_disk(data_dir, data_type, sample_size=None):
@@ -32,21 +29,13 @@ def collect_image_files_from_disk(data_dir, data_type, sample_size=None):
     return files
 
 
-def sample_generator_from_disk(file_pairs, lib_format='pillow', target='numpy'):
-    # target = 'pillow' if lib_format == 'pillow' else 'numpy'
-    for img_path, lbl_path in file_pairs:
-        image = utils.load_image(img_path)
-        label = utils.load_image(lbl_path)
-        yield image, label
-
-
-def soften_targets(array, low, high):
-    assert list(set(np.unique(array)) ^ {0, 1}) == [], 'Targets must be binary'
-    array_new = np.empty_like(array)
-    array_new = np.copyto(array_new, array)
-    array_new[array == 0] = low
-    array_new[array == 1] = high
-    return array_new
+# def soften_targets(array, low=0.1, high=0.9):
+#     assert list(set(np.unique(array)) ^ {0, 1}) == [], 'Targets must be binary'
+#     array_new = np.empty_like(array)
+#     array_new = np.copyto(array_new, array)
+#     array_new[array == 0] = low
+#     array_new[array == 1] = high
+#     return array_new
 
 
 # def preprocess_image(img, mode):
@@ -76,24 +65,26 @@ def preprocess_label(label):
     return label
 
 
-def load_data(mode='json', dataset_name=None,
-              data_dir=None, data_type=None,
-              target_h=None, target_w=None,
-              sample_size=None,
-              resize_mode='stretch'):
-    if mode == 'disk':
+def load_dataset(source='json', dataset_name=None, data_dir=None, data_type=None,
+                 sample_size=None,
+                 instance_mode=True,
+                 keep_context=0.25):
+    if source == 'disk':
         file_pairs = collect_image_files_from_disk(data_dir, data_type, sample_size)
-        generator = sample_generator_from_disk(file_pairs)
-        yield generator.next()
-    elif mode in ['json', None]:
+        dataset = None
+        generator = ((utils.load_image(img_path), utils.load_image(lbl_path)) for img_path, lbl_path in file_pairs)
+    elif source in ['json', None]:
         dataset = datasets.load(dataset_name, data_dir=data_dir, data_type=data_type)
-        # generator = dataset.combined_sample_generator(target_h=target_h, target_w=target_w, sample_size=sample_size)
-        # generator = dataset.sample_generator(sample_size=sample_size)  # , target_h=target_h, target_w=target_w)
-        generator = dataset.crop_generator(sample_size=sample_size)
-        yield dataset.size
+        generator = dataset.sample_generator(sample_size=sample_size, instance_mode=instance_mode, keep_context=keep_context)
     else:
         raise NotImplementedError
+    return dataset, generator
 
+
+def load_data(dataset=None,
+              generator=None,
+              target_h=None, target_w=None,
+              resize_mode='stretch'):
     forced_target_h = target_h
     forced_target_w = target_w
     for img, lbl in generator:
@@ -128,7 +119,10 @@ def load_data(mode='json', dataset_name=None,
         else:
             raise NotImplementedError('unknown resize mode {}'.format(resize_mode))
         assert resized_image.shape[:2] == resized_label.shape[:2]
-        resized_label = np.expand_dims(resized_label, axis=0)  # convert label shape to (1, h, w, c)
+        # resized_image = np.expand_dims(resized_image, axis=0)
+        # resized_label = np.expand_dims(resized_label, axis=0)  # convert label shape to (1, h, w, c)
+        assert len(resized_image.shape) == 3
+        assert len(resized_label.shape) == 3
         yield resized_image, resized_label
 
 
@@ -143,8 +137,8 @@ def batched(data_generator, batch_size, flatten=True):
         if len(images) == batch_size:
             counter += 1
             if flatten:
-                data_shape = labels[0].shape[1] * labels[0].shape[2]
-                nc = labels[0].shape[3]
+                data_shape = labels[0].shape[0] * labels[0].shape[1]
+                nc = labels[0].shape[2]
                 # labels = np.array(labels)
                 # labels = np.rollaxis(np.dstack(labels), -1)
                 labels = np.concatenate(labels, axis=0)
@@ -182,9 +176,12 @@ def test():
 
     print('Preparing to train on {} data...'.format(dataset_name))
 
-    train_gen = load_data(dataset_name=dataset_name,
-                          data_dir=os.path.join('../../data', dataset_name),
-                          data_type='train2014',
+    dataset, generator = load_dataset(dataset_name=dataset_name,
+                                      data_dir=os.path.join('../../data', dataset_name),
+                                      data_type='train2014')
+
+    train_gen = load_data(dataset=dataset,
+                          generator=generator,
                           # batch_size=batch_size,
                           # nc=nc,
                           # shuffle=True,
