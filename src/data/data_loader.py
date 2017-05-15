@@ -2,8 +2,11 @@
 from __future__ import print_function, absolute_import, division
 
 import numpy as np
+import scipy
 import os
 from . import datasets, utils
+from PIL import Image as PILImage
+
 
 
 def collect_image_files_from_disk(data_dir, data_type, sample_size=None):
@@ -110,12 +113,25 @@ def load_data(dataset=None,
         elif resize_mode == 'stretch':
             # TODO assumes that each label contains annotation for a single object
             resized_image = utils.resize(item=image, target_h=target_h, target_w=target_w)
-            label = utils.one_hot_to_rgb(label, dataset.palette)
-            label.astype(np.uint8)
+
+            # for sample in range(label.shape[0]):
+            #     label_resized = []
+            #     for cid in range(label.shape[2]):
+            #         label_resized.append(utils.resize(label[sample][:][cid], target_h=target_h, target_w=target_w))
+
+            # label = utils.one_hot_to_rgb(label, dataset.palette)
+            label = np.argmax(label, axis=2)
+            label = np.expand_dims(label, axis=2)
+            if label.dtype != np.uint8:
+                label = label.astype(np.uint8)
 
             resized_label = utils.resize(item=label, target_h=target_h, target_w=target_w)
             resized_label = resized_label[:, :, 0].astype(dtype=np.uint8)
             resized_label = np.eye(dataset.num_classes())[resized_label]  # convert to one hot (h, w, c)
+
+            # h_ratio = target_h / label.shape[0]
+            # w_ratio = target_w / label.shape[1]
+            # resized_label = scipy.ndimage.zoom(label, (h_ratio, w_ratio, 1), order=0)
         else:
             raise NotImplementedError('unknown resize mode {}'.format(resize_mode))
         assert resized_image.shape[:2] == resized_label.shape[:2]

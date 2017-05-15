@@ -7,11 +7,13 @@ from keras import backend as K
 import json
 import numpy as np
 import os
+import time
 
 # project scope
 from data.data_loader import load_data, batched, load_dataset
 from data import datasets
 from models import enet as model
+from data.utils import ensure_dir
 
 
 def callbacks(log_dir, checkpoint_dir, model_name):
@@ -89,6 +91,8 @@ def train(solver, dataset_name):
     experiment_dir = os.path.join('models', dataset_name, model_name)
     log_dir = os.path.join(experiment_dir, 'logs')
     checkpoint_dir = os.path.join(experiment_dir, 'weights')
+    ensure_dir(log_dir)
+    ensure_dir(checkpoint_dir)
 
     train_dataset, train_generator = load_dataset(dataset_name=dataset_name,
                                                   data_dir=os.path.join('data', dataset_name),
@@ -100,7 +104,7 @@ def train(solver, dataset_name):
                           target_h=dh, target_w=dw,
                           resize_mode=resize_mode)
     train_gen = batched(train_gen, batch_size)
-    nb_train_samples = train_dataset.size
+    nb_train_samples = train_dataset.num_instances if instance_mode else train_dataset.num_images
     steps_per_epoch = nb_train_samples / batch_size
 
     validation_steps = steps_per_epoch // 10
@@ -126,13 +130,12 @@ def train(solver, dataset_name):
                               initial_epoch=completed_epochs,
                               )
 
-
 if __name__ == '__main__':
     solver_json = 'config/solver.json'
-    dataset_name = 'mscoco'
 
     print('solver json: {}'.format(os.path.abspath(solver_json)))
 
     solver = json.load(open(solver_json))
+    dataset_name = solver['dataset_name']
 
     train(solver=solver, dataset_name=dataset_name)

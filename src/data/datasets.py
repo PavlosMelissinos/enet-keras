@@ -111,9 +111,12 @@ class MSCOCO(Dataset):
         return MSCOCO.PALETTE
 
     @property
-    def size(self):
-        # return len(self._coco.imgs)
+    def num_instances(self):
         return self._num_samples
+
+    @property
+    def num_images(self):
+        return len(self._coco.imgs)
 
     @staticmethod
     def num_classes():
@@ -155,7 +158,7 @@ class MSCOCO(Dataset):
 
         ann_mask = self._coco.annToMask(annotation)
 
-        mask_categorical = np.full((ann_mask.shape[0], ann_mask.shape[1], self.num_classes()), low_val, dtype=np.uint8)
+        mask_categorical = np.full((ann_mask.shape[0], ann_mask.shape[1], self.num_classes()), low_val, dtype=np.float32)
         mask_categorical[:, :, 0] = high_val  # every pixel begins as background
 
         class_index = self._cid_to_id[annotation['category_id']]
@@ -228,6 +231,9 @@ class MSCOCO(Dataset):
             # TODO: Examine shuffle + break as an alternative
             img_ids = [int(i) for i in np.random.choice(img_ids, size=sample_size)]
 
+        epsilon = 0.05
+        high_val = 1 - epsilon
+        low_val = 0 + epsilon
         while True:
             for img_id in img_ids:
                 coco_image = self._coco.loadImgs(img_id)[0]
@@ -246,8 +252,8 @@ class MSCOCO(Dataset):
 
                 # image = utils.resize(image, target_h=target_h, target_w=target_w)
 
-                mask_one_hot = np.zeros((target_h, target_w, dimensions), dtype=np.uint8)
-                mask_one_hot[:, :, 0] = 1  # every pixel begins as background
+                mask_one_hot = np.full((target_h, target_w, self.num_classes()), low_val, dtype=np.float32)
+                mask_one_hot[:, :, 0] = high_val  # every pixel begins as background
 
                 annotation_ids = self._coco.getAnnIds(imgIds=coco_image['id'])
 
@@ -260,8 +266,8 @@ class MSCOCO(Dataset):
                     else:
                         class_index = annotation['category_id']
                     assert class_index > 0
-                    mask_one_hot[mask_partial > 0, class_index] = 1
-                    mask_one_hot[mask_partial > 0, 0] = 0  # remove bg label from pixels of this (non-bg) category
+                    mask_one_hot[mask_partial > 0, class_index] = high_val
+                    mask_one_hot[mask_partial > 0, 0] = low_val  # remove bg label from pixels of this (non-bg) category
                 yield image, mask_one_hot
 
     def sample_generator(self, sample_size=None, instance_mode=True, keep_context=0.):
@@ -321,17 +327,28 @@ class MSCOCOReduced(MSCOCO):
 
         # pass through the dataset and count all valid samples
         sample_counter = 0
+        imgs_new = {}
+        anns_new = {}
+        # cats_new = {0: {'id': 0, 'name': 'background', 'supercategory': 'background'}}
+        cats_new = {}
+        for cat_id in self.IDS[1:]:
+            cats_new[cat_id] = self._coco.cats[cat_id]
         for img_id in self._coco.getImgIds():
             annotation_ids = self._coco.getAnnIds(imgIds=img_id)
             for annotation in self._coco.loadAnns(annotation_ids):
                 if annotation['category_id'] not in MSCOCOReduced.IDS:
                     continue
                 if annotation['area'] > self._area_threshold:
+                    imgs_new[img_id] = self._coco.imgs[img_id]
                     sample_counter += 1
+                    anns_new[annotation['id']] = self._coco.anns[annotation['id']]
+        self._coco.imgs = imgs_new
+        self._coco.anns = anns_new
+        self._coco.cats = cats_new
         self._num_samples = sample_counter
 
-    def _annotation_generator(self, sample_size=None):
-        ann_generator = super(MSCOCOReduced, self)._annotation_generator(sample_size)
-        for ann in ann_generator:
-            if ann['category_id'] in MSCOCOReduced.IDS:
-                yield ann
+    # def _annotation_generator(self, sample_size=None):
+    #     ann_generator = super(MSCOCOReduced, self)._annotation_generator(sample_size)
+    #     for ann in ann_generator:
+    #         if ann['category_id'] in MSCOCOReduced.IDS:
+    #             yield ann

@@ -24,7 +24,13 @@ def basename_without_ext(path_to_file):
 
 
 def ensure_dir(f):
-    d = os.path.dirname(f)
+    """
+    Creates folder f if it doesn't exist
+    :param f: path to file
+    :return: 
+    """
+    d = f
+    # d = os.path.dirname(f)
     if not os.path.exists(d):
         try:
             os.makedirs(d)
@@ -60,9 +66,8 @@ def one_hot_to_rgb(onehot, id_to_palette):
     :param id_to_palette: dictionary that maps a class id to rgb
     :return:
     """
-    rgb_label = np.zeros((onehot.shape[0], onehot.shape[1], 3), dtype=np.uint8)
-    for dim in range(onehot.shape[2]):
-        rgb_label[onehot[:, :, dim] > 0] = id_to_palette[dim]
+    label = np.argmax(onehot, axis=2)
+    rgb_label = np.repeat(np.expand_dims(label, axis=2), 3, axis=2)
     return rgb_label
 
 
