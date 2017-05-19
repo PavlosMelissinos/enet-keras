@@ -7,6 +7,7 @@ import numbers
 import abc
 import os
 from . import utils
+from keras.utils import get_file
 
 
 def load(dataset_name, data_dir=None, data_type=None):
@@ -66,14 +67,17 @@ class MSCOCO(Dataset):
         74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
     PALETTE = [(cid, cid, cid) for cid in range(max(IDS) + 1)]
 
-    def __init__(self, data_dir, data_type):
+    def __init__(self, data_dir=None, data_type='train2014'):
         """
-        
+
         :param data_dir: base ms-coco path (parent of annotation json directory)
         :param data_type: 'train2014', 'val2014' or 'test2015'
         """
         Dataset.__init__(self)
 
+        if data_dir is None:
+            data_dir = os.path.join(os.path.expanduser('~'), '.keras', 'datasets', 'coco')
+        self.download(data_dir=data_dir)
         valid_data_types = ['train2014', 'val2014', 'test2015']
         if data_type not in valid_data_types:
             raise ValueError('Unknown data type {}. Valid values are {}'.format(data_type, valid_data_types))
@@ -121,6 +125,64 @@ class MSCOCO(Dataset):
     @staticmethod
     def num_classes():
         return len(MSCOCO.IDS)
+
+    @staticmethod
+    def download(data_dir=None):
+        """Download MSCOCO into data_dir, verify hashes, then extract files.
+        If the files are already present, only the hashes are checked.
+        """
+        if data_dir is None:
+            data_dir = os.path.join(os.path.expanduser('~'), '.keras', 'datasets', 'coco')
+
+        # http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
+        try:
+            os.makedirs(data_dir)
+        except OSError as exc:  # Python >2.5
+            if exc.errno == errno.EEXIST and os.path.isdir(data_dir):
+                pass
+            else:
+                raise
+
+        urls = [
+            'http://msvocds.blob.core.windows.net/coco2014/train2014.zip',
+            'http://msvocds.blob.core.windows.net/coco2014/val2014.zip',
+            'http://msvocds.blob.core.windows.net/coco2014/test2014.zip',
+            'http://msvocds.blob.core.windows.net/coco2015/test2015.zip',
+            'http://msvocds.blob.core.windows.net/annotations-1-0-3/instances_train-val2014.zip',
+            'http://msvocds.blob.core.windows.net/annotations-1-0-3/person_keypoints_trainval2014.zip',
+            'http://msvocds.blob.core.windows.net/annotations-1-0-4/image_info_test2014.zip',
+            'http://msvocds.blob.core.windows.net/annotations-1-0-4/image_info_test2015.zip',
+            'http://msvocds.blob.core.windows.net/annotations-1-0-3/captions_train-val2014.zip'
+        ]
+        data_prefixes = [
+            'train2014',
+            'val2014',
+            'test2014',
+            'test2015',
+        ]
+        image_filenames = [prefix + '.zip' for prefix in data_prefixes]
+        annotation_filenames = [
+            'instances_train-val2014.zip',  # training AND validation info
+            'image_info_test2014.zip',  # basic info like download links + category
+            'image_info_test2015.zip',  # basic info like download links + category
+            'person_keypoints_trainval2014.zip',  # elbows, head, wrist etc
+            'captions_train-val2014.zip',  # descriptions of images
+        ]
+        md5s = [
+            '0da8c0bd3d6becc4dcb32757491aca88',  # train2014.zip
+            'a3d79f5ed8d289b7a7554ce06a5782b3',  # val2014.zip
+            '04127eef689ceac55e3a572c2c92f264',  # test2014.zip
+            '65562e58af7d695cc47356951578c041',  # test2015.zip
+            '59582776b8dd745d649cd249ada5acf7',  # instances_train-val2014.zip
+            '926b9df843c698817ee62e0e049e3753',  # person_keypoints_trainval2014.zip
+            'f3366b66dc90d8ae0764806c95e43c86',  # image_info_test2014.zip
+            '8a5ad1a903b7896df7f8b34833b61757',  # image_info_test2015.zip
+            '5750999c8c964077e3c81581170be65b'   # captions_train-val2014.zip
+        ]
+        filenames = image_filenames + annotation_filenames
+
+        for url, filename, md5 in zip(urls, filenames, md5s):
+            path = get_file(filename, url, md5_hash=md5, extract=True, cache_subdir=data_dir)
 
     def load(self, data_dir, data_type):
         annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
@@ -188,10 +250,10 @@ class MSCOCO(Dataset):
     def instance_generator(self, sample_size=None, keep_context=0.):
         """
         :type keep_context: float < 1
-        :param sample_size: 
+        :param sample_size:
         :param keep_context: How much context to keep around bbox (percentage).
         If possible, adds as many pixels as keep_context*height on both the top and the bottom and keep_context*width
-        on the left and on the right  
+        on the left and on the right
         """
         for ann in self._annotation_generator(sample_size=sample_size):
             cropped_image, cropped_label = self._retrieve_instance(ann, keep_context=keep_context)
