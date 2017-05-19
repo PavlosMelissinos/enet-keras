@@ -1,32 +1,18 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
+from keras.utils import get_file
 from pycocotools import mask
 from pycocotools.coco import COCO
+import abc
+import errno
 import numpy as np
 import numbers
-import abc
 import os
 from . import utils
-from keras.utils import get_file
-
-
-def load(dataset_name, data_dir=None, data_type=None):
-    if dataset_name == 'mscoco':
-        if data_dir is None or data_type is None:
-            return MSCOCO
-        else:
-            return MSCOCO(data_dir=data_dir, data_type=data_type)
-    elif dataset_name == 'mscoco_reduced':
-        if data_dir is None or data_type is None:
-            return MSCOCOReduced
-        else:
-            return MSCOCOReduced(data_dir=data_dir, data_type=data_type)
-    else:
-        raise NotImplementedError('Unknown dataset {}'.format('dataset_name'))
 
 
 class Dataset(object):
-    __metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
 
     NAME = 'dataset'
     CATEGORIES = []
@@ -37,12 +23,16 @@ class Dataset(object):
     #     # this function should be overriden
     #     pass
 
-    @abc.abstractmethod
+    # @abc.abstractmethod
     def load(self, data_dir, data_type):
         """Method documentation"""
     #
     # def id_to_category(self, primary_id):
     #     return self.CATEGORIES[primary_id]
+
+    # @abc.abstractmethod
+    def sample_generator(self):
+        """Method documentation"""
 
 
 class MSCOCO(Dataset):
@@ -67,7 +57,7 @@ class MSCOCO(Dataset):
         74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
     PALETTE = [(cid, cid, cid) for cid in range(max(IDS) + 1)]
 
-    def __init__(self, data_dir=None, data_type='train2014'):
+    def __init__(self, data_dir=None, data_type='train2014', **kwargs):
         """
 
         :param data_dir: base ms-coco path (parent of annotation json directory)
@@ -77,12 +67,17 @@ class MSCOCO(Dataset):
 
         if data_dir is None:
             data_dir = os.path.join(os.path.expanduser('~'), '.keras', 'datasets', 'coco')
-        self.download(data_dir=data_dir)
+
+        annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
+        if not os.path.isfile(annotation_file):
+            print('Dataset not found. Downloading...')
+            self.download(data_dir=data_dir)
+            print('Setting up')
+            self.setup()
         valid_data_types = ['train2014', 'val2014', 'test2015']
         if data_type not in valid_data_types:
             raise ValueError('Unknown data type {}. Valid values are {}'.format(data_type, valid_data_types))
 
-        annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
         print('Initializing MS-COCO: Loading annotations from {}'.format(annotation_file))
         self._coco = COCO(annotation_file)
 
@@ -184,12 +179,18 @@ class MSCOCO(Dataset):
         for url, filename, md5 in zip(urls, filenames, md5s):
             path = get_file(filename, url, md5_hash=md5, extract=True, cache_subdir=data_dir)
 
+    def setup(self):
+        # TODO: 1. Unzip packages
+        # TODO: 2. Create symlinks into the data folder (should the directory be a parameter?).
+        # It's necessary to separate the raw dataset from any subsequent modifications.
+        pass
+
     def load(self, data_dir, data_type):
         annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
         print('Initializing MS-COCO: Loading annotations from {}'.format(annotation_file))
         self._coco = COCO(annotation_file)
 
-    def _annotation_generator(self, sample_size=None):
+    def _annotation_generator(self, sample_size=None, img_ids=None):
         """
         Generates sample_size annotations. No pre/post-processing
         :type sample_size: int
@@ -197,7 +198,9 @@ class MSCOCO(Dataset):
         :return: coco annotation (dictionary)
         """
 
-        img_ids = self._coco.getImgIds()
+        img_ids = self._coco.getImgIds() if img_ids is None else img_ids
+        if not isinstance(img_ids, list):
+            img_ids = [img_ids]
         if isinstance(sample_size, numbers.Number):
             # TODO: random.sample might cause problems when target size is larger than image dimensions \
             # TODO: Examine shuffle + break as an alternative
@@ -303,40 +306,35 @@ class MSCOCO(Dataset):
                 image_path = os.path.join(self._data_dir['images'], coco_image['file_name'])
                 image = utils.load_image(image_path)
 
-                dimensions = len(self.IDS) if cover_gaps else max(self.IDS) + 1
-                # target_h = coco_image['height'] if not default_target_h else default_target_h
-                # target_w = coco_image['width'] if not default_target_w else default_target_w
                 target_h = coco_image['height']
                 target_w = coco_image['width']
-
-                # if target_h > coco_image['height'] or target_w > coco_image['width']:
-                #     continue
-
-                # image = utils.resize(image, target_h=target_h, target_w=target_w)
 
                 mask_one_hot = np.full((target_h, target_w, self.num_classes()), low_val, dtype=np.float32)
                 mask_one_hot[:, :, 0] = high_val  # every pixel begins as background
 
-                annotation_ids = self._coco.getAnnIds(imgIds=coco_image['id'])
+                # annotation_ids = self._coco.getAnnIds(imgIds=coco_image['id'])
 
-                for annotation in self._coco.loadAnns(annotation_ids):
+                # for annotation in self._coco.loadAnns(annotation_ids):
+                for annotation in self._annotation_generator(img_ids=coco_image['id']):
                     mask_partial = self._coco.annToMask(annotation)
-                    # mask_partial = utils.resize(mask_partial, target_h=target_h, target_w=target_w)
                     assert mask_one_hot.shape[:2] == mask_partial.shape[:2]  # width and height match
                     if cover_gaps:
                         class_index = self._cid_to_id[annotation['category_id']]
                     else:
                         class_index = annotation['category_id']
                     assert class_index > 0
-                    mask_one_hot[mask_partial > 0, class_index] = high_val
-                    mask_one_hot[mask_partial > 0, 0] = low_val  # remove bg label from pixels of this (non-bg) category
+                    mask_one_hot[mask_partial > low_val, class_index] = high_val
+                    mask_one_hot[mask_partial > low_val, 0] = low_val  # remove bg label from pixels of this (non-bg) category
                 yield image, mask_one_hot
 
-    def sample_generator(self, sample_size=None, instance_mode=True, keep_context=0.):
+    def sample_generator(self, sample_size=None, instance_mode=True, keep_context=0., merge_annotations=True):
         if instance_mode:
             return self.instance_generator(sample_size=sample_size, keep_context=keep_context)
         else:
-            return self.combined_sample_generator(sample_size=sample_size)
+            if merge_annotations:
+                return self.combined_sample_generator(sample_size=sample_size)
+            else:
+                return self.raw_sample_generator(sample_size=sample_size)
 
     @staticmethod
     def mask_to_mscoco(alpha, annotations, img_id, mode='rle'):
@@ -414,3 +412,90 @@ class MSCOCOReduced(MSCOCO):
     #     for ann in ann_generator:
     #         if ann['category_id'] in MSCOCOReduced.IDS:
     #             yield ann
+
+
+class DiskLoader(Dataset):
+    """
+    Scaffolding for loading data from disk
+    """
+    def __init__(self):
+        pass
+
+    def load(self, data_dir, data_type):
+        pass
+
+    def sample_generator(self):
+        pass
+
+
+class MSCOCOv2(Dataset):
+    """
+    Dummy MSCOCO dataset, describing the set of
+    """
+    NAME = 'mscocov2'
+    CATEGORIES = [
+        'background',  # class zero
+        'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+        'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+        'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+        'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+        'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+        'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+        'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+        'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
+        'hair drier', 'toothbrush']
+    IDS = [
+        0,
+        1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36,
+        37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53,
+        54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 67, 70, 72, 73,
+        74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
+    PALETTE = [(cid, cid, cid) for cid in range(max(IDS) + 1)]
+
+    def __init__(self, config=None):
+        if config:
+            cats = []
+            ids = []
+            for idx, cid in enumerate(self.IDS):
+                if cid in config['class_ids']:
+                    ids.append(self.IDS[idx])
+                    cats.append(self.CATEGORIES[idx])
+            self.IDS = ids
+            self.CATEGORIES = cats
+            self.PALETTE = [(cid, cid, cid) for cid in range(max(self.IDS) + 1)]
+
+    @property
+    def categories(self):
+        return MSCOCOv2.CATEGORIES
+
+    @property
+    def palette(self):
+        return MSCOCOv2.PALETTE
+
+    # @property
+    # def num_instances(self):
+    #     return self._num_samples
+    #
+    # @property
+    # def num_images(self):
+    #     return len(self._coco.imgs)
+
+    @staticmethod
+    def num_classes():
+        return len(MSCOCOv2.IDS)
+
+
+def load(dataset_name, data_dir=None, data_type=None):
+    if dataset_name == 'mscoco':
+        if data_dir is None or data_type is None:
+            return MSCOCO
+        else:
+            return MSCOCO(data_dir=data_dir, data_type=data_type)
+    elif dataset_name == 'mscoco_reduced':
+        if data_dir is None or data_type is None:
+            return MSCOCOReduced
+        else:
+            return MSCOCOReduced(data_dir=data_dir, data_type=data_type)
+    else:
+        raise NotImplementedError('Unknown dataset {}'.format('dataset_name'))

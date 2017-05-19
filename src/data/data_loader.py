@@ -76,7 +76,7 @@ def load_dataset(source='json', dataset_name=None, data_dir=None, data_type=None
         file_pairs = collect_image_files_from_disk(data_dir, data_type, sample_size)
         dataset = None
         generator = ((utils.load_image(img_path), utils.load_image(lbl_path)) for img_path, lbl_path in file_pairs)
-    elif source in ['json', None]:
+    elif source == 'json':
         dataset = datasets.load(dataset_name, data_dir=data_dir, data_type=data_type)
         generator = dataset.sample_generator(sample_size=sample_size, instance_mode=instance_mode, keep_context=keep_context)
     else:

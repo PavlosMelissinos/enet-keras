@@ -1,17 +1,18 @@
 # coding=utf-8
 from keras.layers.advanced_activations import PReLU
 from keras.layers.convolutional import Conv2D, ZeroPadding2D
-from keras.layers.core import Permute, SpatialDropout2D
+from keras.layers.core import SpatialDropout2D, Permute
 from keras.layers.merge import add, concatenate
 from keras.layers.normalization import BatchNormalization
-from keras.layers.pooling import MaxPooling2D
+
+from ..layers.pooling import MaxPoolingWithArgmax2D
 
 
 def initial_block(inp, nb_filter=13, nb_row=3, nb_col=3, strides=(2, 2)):
     conv = Conv2D(nb_filter, (nb_row, nb_col), padding='same', strides=strides)(inp)
-    max_pool = MaxPooling2D()(inp)
+    max_pool, indices = MaxPoolingWithArgmax2D()(inp)
     merged = concatenate([conv, max_pool], axis=3)
-    return merged
+    return merged, indices
 
 
 def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsample=False, dropout_rate=0.1):
@@ -22,10 +23,10 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
     # 1x1
     input_stride = 2 if downsample else 1  # the 1st 1x1 projection is replaced with a 2x2 convolution when downsampling
     encoder = Conv2D(internal, (input_stride, input_stride),
-                            padding='same',
+                            # padding='same',
                             strides=(input_stride, input_stride), use_bias=False)(encoder)
     # Batch normalization + PReLU
-    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet uses momentum of 0.1, keras default is 0.99
+    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
     encoder = PReLU(shared_axes=[1, 2])(encoder)
 
     # conv
@@ -39,19 +40,20 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
     else:
         raise(Exception('You shouldn\'t be here'))
 
-    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet uses momentum of 0.1, keras default is 0.99
+    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
     encoder = PReLU(shared_axes=[1, 2])(encoder)
     
     # 1x1
-    encoder = Conv2D(output, (1, 1), padding='same', use_bias=False)(encoder)
+    encoder = Conv2D(output, (1, 1), use_bias=False)(encoder)
 
-    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet uses momentum of 0.1, keras default is 0.99
+    encoder = BatchNormalization(momentum=0.1)(encoder)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
     encoder = SpatialDropout2D(dropout_rate)(encoder)
 
     other = inp
     # other branch
     if downsample:
-        other = MaxPooling2D()(other)
+        other, indices = MaxPoolingWithArgmax2D()(other)
+
         other = Permute((1, 3, 2))(other)
         pad_feature_maps = output - inp.get_shape().as_list()[3]
         tb_pad = (0, 0)
@@ -61,16 +63,23 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
 
     encoder = add([encoder, other])
     encoder = PReLU(shared_axes=[1, 2])(encoder)
-    return encoder
+    if downsample:
+        return encoder, indices
+    else:
+        return encoder
 
 
 def build(inp, dropout_rate=0.01):
-    enet = initial_block(inp)
-    enet = bottleneck(enet, 64, downsample=True, dropout_rate=dropout_rate)  # bottleneck 1.0
+    pooling_indices = []
+    enet, indices_single = initial_block(inp)
+    pooling_indices.append(indices_single)
+    enet, indices_single = bottleneck(enet, 64, downsample=True, dropout_rate=dropout_rate)  # bottleneck 1.0
+    pooling_indices.append(indices_single)
     for i in range(4):
         enet = bottleneck(enet, 64, dropout_rate=dropout_rate)  # bottleneck 1.i
     
-    enet = bottleneck(enet, 128, downsample=True)  # bottleneck 2.0
+    enet, indices_single = bottleneck(enet, 128, downsample=True)  # bottleneck 2.0
+    pooling_indices.append(indices_single)
     # bottleneck 2.x and 3.x
     for i in range(2):
         enet = bottleneck(enet, 128)  # bottleneck 2.1
@@ -81,5 +90,4 @@ def build(inp, dropout_rate=0.01):
         enet = bottleneck(enet, 128, dilated=8)  # bottleneck 2.6
         enet = bottleneck(enet, 128, asymmetric=5)  # bottleneck 2.7
         enet = bottleneck(enet, 128, dilated=16)  # bottleneck 2.8
-    return enet
-
+    return enet, pooling_indices

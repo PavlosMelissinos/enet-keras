@@ -2,18 +2,17 @@
 from __future__ import print_function, absolute_import
 
 # global scope
-from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras import backend as K
 import json
 import numpy as np
 import os
-import time
+from keras import backend as K
+from keras.callbacks import TensorBoard, ModelCheckpoint
 
 # project scope
-from data.data_loader import load_data, batched, load_dataset
-from data import datasets
-from models import enet as model
-from data.utils import ensure_dir
+from src.data import datasets
+from src.data.data_loader import load_data, batched, load_dataset
+from src.data.utils import ensure_dir
+from src.models import select_model
 
 
 def callbacks(log_dir, checkpoint_dir, model_name):
@@ -52,13 +51,15 @@ def callbacks(log_dir, checkpoint_dir, model_name):
     return cbs
 
 
-def train(solver, dataset_name):
+def train(solver):
+    dataset_name = solver['dataset_name']
 
     print('Preparing to train on {} data...'.format(dataset_name))
 
     epochs = solver['epochs']
     batch_size = solver['batch_size']
     completed_epochs = solver['completed_epochs']
+    model_name = solver['model_name']
 
     np.random.seed(1337)  # for reproducibility
 
@@ -71,6 +72,7 @@ def train(solver, dataset_name):
     dataset = datasets.load(dataset_name)
     nc = dataset.num_classes()  # categories + background
 
+    model = select_model(model_name=model_name)
     autoencoder, model_name = model.build(nc=nc, w=dw, h=dh)
     if 'h5file' in solver:
         h5file = solver['h5file']
@@ -136,6 +138,5 @@ if __name__ == '__main__':
     print('solver json: {}'.format(os.path.abspath(solver_json)))
 
     solver = json.load(open(solver_json))
-    dataset_name = solver['dataset_name']
 
-    train(solver=solver, dataset_name=dataset_name)
+    train(solver=solver)

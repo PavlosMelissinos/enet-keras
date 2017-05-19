@@ -58,7 +58,7 @@ dependencies:
   - packaging==16.8
   - pandocfilters==1.4.1
   - pathlib2==2.2.1
-  - pbr==3.0.0
+  - pbr==3.0.1
   - pexpect==4.2.1
   - pickleshare==0.7.4
   - pillow==4.1.0
@@ -78,7 +78,7 @@ dependencies:
   - singledispatch==3.4.0.3
   - six==1.10.0
   - subprocess32==3.2.7
-  - tensorflow-gpu==1.1.0
+  - tensorflow-gpu==1.2.0rc1
   - terminado==0.6
   - testpath==0.3
   - theano==0.9.0
@@ -86,5 +86,5 @@ dependencies:
   - traitlets==4.3.2
   - wcwidth==0.1.7
   - webencodings==0.5.1
-  - werkzeug==0.12.1
+  - werkzeug==0.12.2
   - widgetsnbextension==2.0.0

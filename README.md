@@ -89,11 +89,17 @@ TODO
   - [ ] Index dataset category internals. Dataset categories have fields with one-to-one correspondence like id, category_id, palette, categories. This seems like perfect table structure. Might be too much though.
   - [ ] (Optionally) Make data loader multithreaded (no idea how to approach this one, multithreadedness is handled by keras though)
 - [ ] Enhance reproducibility/usability
-  - [ ] download_mscoco.sh should extract the archives to their appropriate locations
+  - [ ] complete dataset preparation
+    - [ ] download_mscoco.sh should extract the archives to their appropriate locations
+      - [ ] Include symlink creation in Dataset.download()
   - [ ] Upload pretrained model
-  - [ ] Finalize prediction.py (this might be broken, haven't tried it with the latest changes)
-    - [ ] Retrain new version of ENet for rgb values
+  - [ ] Finalize predict.py
+    - [x] Test whether it works after latest changes
+    - [x] Retrain new version of ENet for rgb values
+    - [ ] Modify predict.py to load a single image or from a file. There's no point in loading images from the validation set.
   - [ ] Add enet version with unpooling instead of naive upsampling
 - [ ] Fix bugs
-  - [x] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded, counting it in the dataset constructor and load method might suffice.
+  - [x] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded. Counting it in the dataset constructor and load method might suffice.
+  - [ ] Investigate reason for bad results, see [#11](https://github.com/PavlosMelissinos/enet-keras/issues/11)
+  - [ ] Fix MSCOCOReduced, [also see #9](https://github.com/PavlosMelissinos/enet-keras/issues/9)
   - [ ] ?????

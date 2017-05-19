@@ -1,5 +1,5 @@
 {
-  "model_name": "enet",
+  "model_name": "enet_unpooling",
   "epochs": 100,
   "batch_size": 8,
   "completed_epochs": 0,
@@ -8,5 +8,7 @@
   "skip": 0,
   "resize_mode": "stretch",
   "instance_mode": true,
-  "dataset_name": "mscoco"
+  "dataset_name": "mscoco",
+  "cids": null,
+  "data_loader": null
 }

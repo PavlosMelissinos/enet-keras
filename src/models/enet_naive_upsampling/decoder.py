@@ -1,5 +1,5 @@
 # coding=utf-8
-from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D, Conv2DTranspose
+from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D
 from keras.layers.core import Activation
 from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
@@ -7,9 +7,8 @@ from keras.layers.normalization import BatchNormalization
 
 def bottleneck(encoder, output, upsample=False, reverse_module=False):
     internal = output / 4
-    input_stride = 2 if upsample else 1
-    
-    x = Conv2D(internal, (1, 1), padding='same', use_bias=False)(encoder)
+
+    x = Conv2D(internal, (1, 1), use_bias=False)(encoder)
     x = BatchNormalization(momentum=0.1)(x)
     x = Activation('relu')(x)
     if not upsample:
@@ -47,4 +46,3 @@ def build(encoder, nc):
 
     enet = Conv2DTranspose(filters=nc, kernel_size=(2, 2), strides=(2, 2), padding='same')(enet)
     return enet
-

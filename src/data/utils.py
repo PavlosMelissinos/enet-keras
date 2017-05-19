@@ -40,8 +40,10 @@ def ensure_dir(f):
 
 
 def normalized(img):
-    processed_img = ImageOps.equalize(img)
-    processed_img = img_to_array(processed_img)
+    if isinstance(img, np.ndarray):
+        processed_img = ImageOps.equalize(PILImage.fromarray(img, mode='RGB'))
+    else:
+        processed_img = ImageOps.equalize(img)
     return processed_img
 
 
@@ -105,7 +107,7 @@ def resize(item, target_h, target_w, keep_aspect_ratio=False):
     :param target_h: height in pixels
     :param target_w: width in pixels
     :param keep_aspect_ratio: If False then image is rescaled to smallest dimension and then cropped
-    :return: 3d numpy array unless format is 'pillow' and input is an instance of PIL.Image
+    :return: 3d numpy array
     """
     img = array_to_img(item, scale=False)
     if keep_aspect_ratio:

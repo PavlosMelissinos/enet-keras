@@ -93,3 +93,4 @@ ENV/
 data/*
 # do not ignore dataset downloader
 !data/download_mscoco.sh
+*.h5
