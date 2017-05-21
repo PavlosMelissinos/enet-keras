@@ -7,7 +7,7 @@ This is an implementation of [ENet: A Deep Neural Network Architecture for Real-
 
 [pycocotools](https://github.com/pdollar/coco)
 
-OpenCV, Pillow and scikit-image - These are currently all listed as required. The reason is the project is undergoing a cleanup behind the scenes on this front. Currently OpenCV is used predominantly. However, it's a weird library and I'm attempting to replace it with something else. predict.py is used as a testbed.
+Pillow
 
 hdf5
 
