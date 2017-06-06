@@ -48,6 +48,11 @@ class MaxUnpooling2D(Layer):
         super(MaxUnpooling2D, self).build(input_shape)
 
     def call(self, inputs, output_shape=None):
+        """
+        Seen on https://github.com/tensorflow/tensorflow/issues/2169
+        Replace with unpool op when/if issue merged
+        Add theano backend
+        """
         updates, mask = inputs[0], inputs[1]
         with K.tf.variable_scope(self.name):
             mask = K.cast(mask, 'int32')
