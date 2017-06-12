@@ -24,16 +24,16 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
     if encoder.get_shape()[-1] != output or upsample:
         other = Conv2D(output, (1, 1), padding='same', use_bias=False)(other)
         other = BatchNormalization(momentum=0.1)(other)
-        if upsample and reverse_module:
+        if upsample and reverse_module is not False:
             other = UpSampling2D(size=(2, 2))(other)
         
-    if not upsample or reverse_module:
-        x = BatchNormalization(momentum=0.1)(x)
+    if upsample and reverse_module is False:
+        decoder = x
     else:
-        return x
-    
-    decoder = add([x, other])
-    decoder = Activation('relu')(decoder)
+        x = BatchNormalization(momentum=0.1)(x)
+        decoder = add([x, other])
+        decoder = Activation('relu')(decoder)
+
     return decoder
 
 

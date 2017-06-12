@@ -4,7 +4,6 @@ from keras.layers.convolutional import Conv2D, ZeroPadding2D
 from keras.layers.core import SpatialDropout2D, Permute
 from keras.layers.merge import add, concatenate
 from keras.layers.normalization import BatchNormalization
-
 from ..layers.pooling import MaxPoolingWithArgmax2D
 
 

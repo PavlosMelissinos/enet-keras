@@ -1,9 +1,8 @@
 # coding=utf-8
-from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D
+from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation
 from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
-
 from ..layers.pooling import MaxUnpooling2D
 
 
@@ -26,17 +25,16 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
     if encoder.get_shape()[-1] != output or upsample:
         other = Conv2D(output, (1, 1), padding='same', use_bias=False)(other)
         other = BatchNormalization(momentum=0.1)(other)
-        if upsample:
-            mpool = MaxUnpooling2D()
-            other = mpool([other, reverse_module])
+        if upsample and reverse_module is not False:
+            other = MaxUnpooling2D()([other, reverse_module])
 
     if upsample and reverse_module is False:
-        return x
+        decoder = x
     else:
         x = BatchNormalization(momentum=0.1)(x)
+        decoder = add([x, other])
+        decoder = Activation('relu')(decoder)
 
-    decoder = add([x, other])
-    decoder = Activation('relu')(decoder)
     return decoder
 
 

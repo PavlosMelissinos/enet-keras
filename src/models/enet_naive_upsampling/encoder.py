@@ -83,4 +83,3 @@ def build(inp, dropout_rate=0.01):
         enet = bottleneck(enet, 128, asymmetric=5)  # bottleneck 2.7
         enet = bottleneck(enet, 128, dilated=16)  # bottleneck 2.8
     return enet
-

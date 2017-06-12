@@ -6,17 +6,13 @@ from keras.layers import Layer
 class MaxPoolingWithArgmax2D(Layer):
     def __init__(self, pool_size=(2, 2), strides=(2, 2), padding='same', **kwargs):
         super(MaxPoolingWithArgmax2D, self).__init__(**kwargs)
+        self.padding = padding
         self.pool_size = pool_size
         self.strides = strides
-        self.padding = padding
-
-    def build(self, input_shape):
-        # Create a trainable weight variable for this layer.
-        super(MaxPoolingWithArgmax2D, self).build(input_shape)  # Be sure to call this somewhere!
 
     def call(self, inputs, **kwargs):
-        pool_size = self.pool_size
         padding = self.padding
+        pool_size = self.pool_size
         strides = self.strides
         if K.backend() == 'tensorflow':
             ksize = [1, pool_size[0], pool_size[1], 1]
@@ -42,10 +38,6 @@ class MaxUnpooling2D(Layer):
     def __init__(self, size=(2, 2), **kwargs):
         super(MaxUnpooling2D, self).__init__(**kwargs)
         self.size = size
-        self.kwargs = kwargs
-
-    def build(self, input_shape):
-        super(MaxUnpooling2D, self).build(input_shape)
 
     def call(self, inputs, output_shape=None):
         """
