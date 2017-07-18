@@ -4,7 +4,7 @@
     "dh": 512,
     "dw": 512,
     "nc": 81,
-    "h5file": "enet_best_whole_image",
+    "h5file": "enet_best",
     "model_name": "enet",
     "test_sample_size": null
 }
