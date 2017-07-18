@@ -1,6 +1,7 @@
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/PavlosMelissinos/enet-keras/blob/master/LICENSE)
-
 # ENet-keras
+
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/PavlosMelissinos/enet-keras/blob/master/LICENSE)
+![](https://reposs.herokuapp.com/?path=PavlosMelissinos/enet-keras&style=flat&color=red)
 
 This is an implementation of [ENet: A Deep Neural Network Architecture for Real-Time Semantic Segmentation](https://arxiv.org/abs/1606.02147), ported from [ENet-training](https://github.com/e-lab/ENet-training) ([lua-torch](https://github.com/torch/torch7)) to [keras](https://github.com/fchollet/keras).
 
@@ -21,20 +22,21 @@ hdf5
 ## Installation
 
 
-### Anaconda/Miniconda 
-
-```conda env create -f environment.yml```
+### Dependencies
 
 
-### pip 
+On Anaconda/miniconda: ```conda env create -f environment.yml```
 
-```pip install -r requirements.txt```
+
+On pip: ```pip install -r requirements.txt```
 
 
 ### pycocotools
 
-Follow the instructions on the [repo](https://github.com/pdollar/coco) to install the MS-COCO API.
-
+```
+cd src/data/pycocotools/
+make
+```
 
 ## Preparation
 
