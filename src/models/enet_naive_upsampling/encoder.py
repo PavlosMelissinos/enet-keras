@@ -16,7 +16,7 @@ def initial_block(inp, nb_filter=13, nb_row=3, nb_col=3, strides=(2, 2)):
 
 def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsample=False, dropout_rate=0.1):
     # main branch
-    internal = output / internal_scale
+    internal = output // internal_scale
     encoder = inp
 
     # 1x1
@@ -83,4 +83,3 @@ def build(inp, dropout_rate=0.01):
         enet = bottleneck(enet, 128, asymmetric=5)  # bottleneck 2.7
         enet = bottleneck(enet, 128, dilated=16)  # bottleneck 2.8
     return enet
-

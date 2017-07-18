@@ -1,5 +1,8 @@
 # ENet-keras
 
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/PavlosMelissinos/enet-keras/blob/master/LICENSE)
+![](https://reposs.herokuapp.com/?path=PavlosMelissinos/enet-keras&style=flat&color=red)
+
 This is an implementation of [ENet: A Deep Neural Network Architecture for Real-Time Semantic Segmentation](https://arxiv.org/abs/1606.02147), ported from [ENet-training](https://github.com/e-lab/ENet-training) ([lua-torch](https://github.com/torch/torch7)) to [keras](https://github.com/fchollet/keras).
 
 
@@ -19,20 +22,21 @@ hdf5
 ## Installation
 
 
-### Anaconda/Miniconda 
-
-```conda env create -f environment.yml```
+### Dependencies
 
 
-### pip 
+On Anaconda/miniconda: ```conda env create -f environment.yml```
 
-```pip install -r requirements.txt```
+
+On pip: ```pip install -r requirements.txt```
 
 
 ### pycocotools
 
-Follow the instructions on the [repo](https://github.com/pdollar/coco) to install the MS-COCO API.
-
+```
+cd src/data/pycocotools/
+make
+```
 
 ## Preparation
 
@@ -74,16 +78,12 @@ TODO
 
 ## Remaining tasks
 
-- [x] Remove opencv dependency
-  - [x] Open new issue about available image processing libraries.
-  - [x] Remove opencv calls from train.py
-  - [x] Remove opencv calls from data loader (nearly there)
 - [ ] Clean up code
   - [ ] Remove hardcoded paths
   - [ ] Add documentation everywhere
 - [ ] Test code
   - [ ] Add tests
-  - [ ] Debug train.py
+  - [x] Debug train.py
 - [ ] Fix performance (mostly preprocessing bottleneck)
   - [ ] Remove unnecessary computations in data preprocessing
   - [ ] Index dataset category internals. Dataset categories have fields with one-to-one correspondence like id, category_id, palette, categories. This seems like perfect table structure. Might be too much though.
@@ -97,7 +97,7 @@ TODO
     - [x] Test whether it works after latest changes
     - [x] Retrain new version of ENet for rgb values
     - [ ] Modify predict.py to load a single image or from a file. There's no point in loading images from the validation set.
-  - [ ] Add enet version with unpooling instead of naive upsampling
+  - [x] Add enet version with unpooling instead of naive upsampling
 - [ ] Fix bugs
   - [x] steps_per_epoch doesn't correspond to the actual number per epoch when instance crops are used: Annotations that cover a tiny area (less than 50x50) are skipped. This should somehow be computed when the dataset is loaded. Counting it in the dataset constructor and load method might suffice.
   - [ ] Investigate reason for bad results, see [#11](https://github.com/PavlosMelissinos/enet-keras/issues/11)

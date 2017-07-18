@@ -1,13 +1,13 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
 from keras.utils import get_file
-from pycocotools import mask
-from pycocotools.coco import COCO
 import abc
 import errno
 import numpy as np
 import numbers
 import os
+from .pycocotools import mask
+from .pycocotools.coco import COCO
 from . import utils
 
 
