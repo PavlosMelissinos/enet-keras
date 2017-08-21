@@ -2,11 +2,8 @@
 from __future__ import print_function, absolute_import, division
 
 import numpy as np
-import scipy
 import os
 from . import datasets, utils
-from PIL import Image as PILImage
-
 
 
 def collect_image_files_from_disk(data_dir, data_type, sample_size=None):

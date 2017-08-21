@@ -190,7 +190,7 @@ class MSCOCO(Dataset):
         print('Initializing MS-COCO: Loading annotations from {}'.format(annotation_file))
         self._coco = COCO(annotation_file)
 
-    def _annotation_generator(self, sample_size=None, img_ids=None):
+    def _annotation_generator(self, sample_size=None, img_ids=None, eternal_loop=False):
         """
         Generates sample_size annotations. No pre/post-processing
         :type sample_size: int
@@ -198,6 +198,7 @@ class MSCOCO(Dataset):
         :return: coco annotation (dictionary)
         """
 
+        eternal_loop = True if img_ids is None else eternal_loop
         img_ids = self._coco.getImgIds() if img_ids is None else img_ids
         if not isinstance(img_ids, list):
             img_ids = [img_ids]
@@ -212,6 +213,8 @@ class MSCOCO(Dataset):
                 for annotation in self._coco.loadAnns(annotation_ids):
                     if annotation['area'] > self._area_threshold:
                         yield annotation
+            if not eternal_loop:
+                break
 
     def _retrieve_sample(self, annotation):
         epsilon = 0.05
