@@ -20,13 +20,14 @@ class MaxPoolingWithArgmax2D(Layer):
             strides = [1, strides[0], strides[1], 1]
             output, argmax = K.tf.nn.max_pool_with_argmax(inputs, ksize=ksize, strides=strides, padding=padding)
         else:
-            raise NotImplementedError('{} backend is not supported for layer {}'.format(K.backend(), type(self).__name__))
+            errmsg = '{} backend is not supported for layer {}'.format(K.backend(), type(self).__name__)
+            raise NotImplementedError(errmsg)
         argmax = K.cast(argmax, K.floatx())
         return [output, argmax]
 
     def compute_output_shape(self, input_shape):
         ratio = (1, 2, 2, 1)
-        output_shape = [dim / ratio[idx] if dim is not None else None for idx, dim in enumerate(input_shape)]
+        output_shape = [dim // ratio[idx] if dim is not None else None for idx, dim in enumerate(input_shape)]
         output_shape = tuple(output_shape)
         return [output_shape, output_shape]
 
