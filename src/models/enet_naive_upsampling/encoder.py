@@ -67,13 +67,15 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
 
 def build(inp, dropout_rate=0.01):
     enet = initial_block(inp)
+    enet = BatchNormalization(momentum=0.1)(enet)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
+    enet = PReLU(shared_axes=[1, 2])(enet)
     enet = bottleneck(enet, 64, downsample=True, dropout_rate=dropout_rate)  # bottleneck 1.0
-    for i in range(4):
+    for _ in range(4):
         enet = bottleneck(enet, 64, dropout_rate=dropout_rate)  # bottleneck 1.i
     
     enet = bottleneck(enet, 128, downsample=True)  # bottleneck 2.0
     # bottleneck 2.x and 3.x
-    for i in range(2):
+    for _ in range(2):
         enet = bottleneck(enet, 128)  # bottleneck 2.1
         enet = bottleneck(enet, 128, dilated=2)  # bottleneck 2.2
         enet = bottleneck(enet, 128, asymmetric=5)  # bottleneck 2.3

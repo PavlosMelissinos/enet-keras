@@ -22,8 +22,8 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
     # 1x1
     input_stride = 2 if downsample else 1  # the 1st 1x1 projection is replaced with a 2x2 convolution when downsampling
     encoder = Conv2D(internal, (input_stride, input_stride),
-                            # padding='same',
-                            strides=(input_stride, input_stride), use_bias=False)(encoder)
+                     # padding='same',
+                     strides=(input_stride, input_stride), use_bias=False)(encoder)
     # Batch normalization + PReLU
     encoder = BatchNormalization(momentum=0.1)(encoder)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
     encoder = PReLU(shared_axes=[1, 2])(encoder)
@@ -71,16 +71,18 @@ def bottleneck(inp, output, internal_scale=4, asymmetric=0, dilated=0, downsampl
 def build(inp, dropout_rate=0.01):
     pooling_indices = []
     enet, indices_single = initial_block(inp)
+    enet = BatchNormalization(momentum=0.1)(enet)  # enet_unpooling uses momentum of 0.1, keras default is 0.99
+    enet = PReLU(shared_axes=[1, 2])(enet)
     pooling_indices.append(indices_single)
     enet, indices_single = bottleneck(enet, 64, downsample=True, dropout_rate=dropout_rate)  # bottleneck 1.0
     pooling_indices.append(indices_single)
-    for i in range(4):
+    for _ in range(4):
         enet = bottleneck(enet, 64, dropout_rate=dropout_rate)  # bottleneck 1.i
     
     enet, indices_single = bottleneck(enet, 128, downsample=True)  # bottleneck 2.0
     pooling_indices.append(indices_single)
     # bottleneck 2.x and 3.x
-    for i in range(2):
+    for _ in range(2):
         enet = bottleneck(enet, 128)  # bottleneck 2.1
         enet = bottleneck(enet, 128, dilated=2)  # bottleneck 2.2
         enet = bottleneck(enet, 128, asymmetric=5)  # bottleneck 2.3
