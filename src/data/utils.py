@@ -1,5 +1,5 @@
 # coding=utf-8
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from keras.preprocessing.image import img_to_array, array_to_img
 from PIL import Image as PILImage, ImageOps

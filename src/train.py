@@ -1,5 +1,5 @@
 # coding=utf-8
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, division, print_function
 
 # global scope
 import json
@@ -26,8 +26,7 @@ def callbacks(log_dir, checkpoint_dir, model_name):
     cbs = []
 
     tb = TensorBoard(log_dir=log_dir,
-                     histogram_freq=1,
-                     # write_graph=True,
+                     write_graph=True,
                      write_images=True)
     cbs.append(tb)
 
@@ -107,7 +106,7 @@ def train(solver):
                           resize_mode=resize_mode)
     train_gen = batched(train_gen, batch_size)
     nb_train_samples = train_dataset.num_instances if instance_mode else train_dataset.num_images
-    steps_per_epoch = nb_train_samples / batch_size
+    steps_per_epoch = nb_train_samples // batch_size
 
     validation_steps = steps_per_epoch // 10
     val_dataset, val_generator = load_dataset(dataset_name=dataset_name,
