@@ -1,6 +1,7 @@
-from __future__ import print_function, division
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
+# coding=utf-8
+from __future__ import absolute_import, division, print_function
+from src.data.pycocotools.coco import COCO
+from src.data.pycocotools.cocoeval import COCOeval
 import os
 import sys
 import json

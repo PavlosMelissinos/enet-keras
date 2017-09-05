@@ -7,11 +7,11 @@ import os
 import sys
 
 from keras import backend as K
-from pycocotools import mask as cocomask
 
-from . import models
-from .data import utils
-from .predict import predict
+from src import models
+from src.data import utils
+from src.data.pycocotools import mask as cocomask
+from src.predict import predict
 
 
 def masks_as_fortran_order(masks):
@@ -46,6 +46,7 @@ def ann_dict_generator(alpha, scores, img_id, filename=None):
 
         rle = cocomask.encode(mask)
         segmentation = rle[0]
+        segmentation['counts'] = segmentation['counts'].decode('utf-8')  # converted byte value to unicode
         ann = {'image_id': img_id,
                'category_id': int(c),
                'filename': filename,
@@ -104,7 +105,7 @@ def save_to_json(dt, evaluation_dir, data_type, ann_type='segm'):
     if not os.path.exists(evaluation_dir):
         os.makedirs(evaluation_dir)
     result_json = os.path.join(evaluation_dir, '{}_{}_{}_results.json'.format(prefix, data_type, ann_type))
-    with open(result_json, "wb") as f:
+    with open(result_json, "w") as f:
         print('Saving as {}...'.format(os.path.realpath(result_json)))
         json.dump(dt, f, indent=4)
     print('Done!')
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     print('{} has been selected'.format(h5file))
 
     model = load_model(h5file, model_name)
-    
+
     imfiles = load_data(metadata['data_type'], mscoco_dir=os.path.join('data', 'mscoco'))
     # datasets.load(dataset_name='mscoco')
     dt = build_detections(model, imfiles, target_h=dh, target_w=dw, test_sample_size=test_sample_size)

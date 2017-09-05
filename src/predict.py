@@ -9,7 +9,7 @@ import sys
 from keras import backend as K
 from keras.preprocessing.image import array_to_img
 
-from .data import datasets, utils
+from src.data import datasets, utils
 import models
 
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     dw = 256
     dh = 256
-    dataset = datasets.load(dataset_name=dataset_name, data_dir='data/mscoco_reduced', data_type=data_type)
+    dataset = datasets.load(dataset_name=dataset_name, data_dir='data/mscoco', data_type=data_type)
     nc = dataset.num_classes()
 
     if K.backend() == 'tensorflow':
@@ -114,7 +114,9 @@ if __name__ == '__main__':
         pred_final = array_to_img(pred_final)
 
         out_file = os.path.join(os.path.realpath(out_directory),
-                                '{}_{}_{}_out.png'.format(idx, keep_context, utils.basename_without_ext(pw)))
+                                '{}_{}_{}_out.png'.format(idx,
+                                                          keep_context,
+                                                          utils.basename_without_ext(pw)))
 
         sys.stdout.flush()
         if os.path.isfile(out_file):
