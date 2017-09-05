@@ -26,22 +26,16 @@ def transfer_weights(model, weights=None, keep_top=False):
         :param idx: original index of layer
         :return: the corrected index of the layer as well as the corresponding layer
         """
+        idx_mapper = {
+            266: 267,
+            267: 268,
+            268: 266,
+            299: 300,
+            300: 301,
+            301: 299
+        }
 
-        if idx == 266:
-            actual_idx = 267
-        elif idx == 267:
-            actual_idx = 268
-        elif idx == 268:
-            actual_idx = 266
-
-        elif idx == 299:
-            actual_idx = 300
-        elif idx == 300:
-            actual_idx = 301
-        elif idx == 301:
-            actual_idx = 299
-        else:
-            actual_idx = idx
+        actual_idx = idx_mapper[idx] if idx in idx_mapper else idx
         return actual_idx, model.layers[actual_idx]
 
     if weights is None:
@@ -61,7 +55,8 @@ def transfer_weights(model, weights=None, keep_top=False):
 
             item = weights_mem[idx]
             layer_name = item['torch_typename']
-            if layer_name == 'cudnn.SpatialConvolution':
+            new_values = layer.get_weights()
+            if layer_name == 'cudnn.SpatialConvolution' or layer_name == 'nn.SpatialDilatedConvolution':
                 if 'bias' in item:
                     new_values = [item['weight'], item['bias']]
                 else:
@@ -70,21 +65,14 @@ def transfer_weights(model, weights=None, keep_top=False):
                 new_values = [item['gamma'], item['beta'], item['moving_mean'], item['moving_variance']]
             elif layer_name == 'nn.PReLU':
                 new_values = [item['weight']]
-            elif layer_name == 'nn.SpatialDilatedConvolution':
-                if 'bias' in item:
-                    new_values = [item['weight'], item['bias']]
-                else:
-                    new_values = [item['weight']]
             elif layer_name == 'nn.SpatialFullConvolution':
-                new_values = layer.get_weights()
                 if keep_top:
                     if 'bias' in item:
                         new_values = [item['weight'], item['bias']]
                     else:
                         new_values = [item['weight']]
             else:
-                print(layer_name)
-                new_values = layer.get_weights()
+                print('Unhandled layer type "{}"'.format(layer_name))
             layer.set_weights(new_values)
             idx += 1
     return model
