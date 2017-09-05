@@ -1,4 +1,5 @@
 # coding=utf-8
+from keras.layers.advanced_activations import PReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation
 from keras.layers.merge import add
@@ -11,13 +12,15 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
 
     x = Conv2D(internal, (1, 1), use_bias=False)(encoder)
     x = BatchNormalization(momentum=0.1)(x)
-    x = Activation('relu')(x)
+    # x = Activation('relu')(x)
+    x = PReLU(shared_axes=[1, 2])(x)
     if not upsample:
         x = Conv2D(internal, (3, 3), padding='same', use_bias=True)(x)
     else:
         x = Conv2DTranspose(filters=internal, kernel_size=(3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization(momentum=0.1)(x)
-    x = Activation('relu')(x)
+    # x = Activation('relu')(x)
+    x = PReLU(shared_axes=[1, 2])(x)
 
     x = Conv2D(output, (1, 1), padding='same', use_bias=False)(x)
 
@@ -33,7 +36,8 @@ def bottleneck(encoder, output, upsample=False, reverse_module=False):
     else:
         x = BatchNormalization(momentum=0.1)(x)
         decoder = add([x, other])
-        decoder = Activation('relu')(decoder)
+        # decoder = Activation('relu')(decoder)
+        decoder = PReLU(shared_axes=[1, 2])(decoder)
 
     return decoder
 
