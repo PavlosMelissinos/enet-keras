@@ -1,10 +1,10 @@
 # coding=utf-8
-from keras.engine import Model
-from keras.layers.convolutional import Conv2D, ZeroPadding2D
-from keras.layers.pooling import AveragePooling2D, MaxPooling2D
-from keras.layers.merge import Add
+from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation, Lambda
-from ..layers.core import interp
+from keras.layers.merge import Add
+from keras.layers.normalization import BatchNormalization
+from keras.layers.pooling import AveragePooling2D, MaxPooling2D
+from ..layers.core import interp, Conv2D_BN as ConvBN
 from keras import backend as K
 
 
@@ -32,32 +32,38 @@ def build(inp):
             strides = [strides] * 3
 
         for idx in range(3):
-            x = Conv2D(filters=filters[idx],
-                       kernel_size=kernel_sizes[idx],
-                       strides=strides[idx],
-                       padding=padding[idx],
-                       dilation_rate=dilation_rates[idx],
-                       activation=activations[idx],
-                       name=names[idx])(x)
+            x = ConvBN(
+                filters=filters[idx],
+                kernel_size=kernel_sizes[idx],
+                strides=strides[idx],
+                padding=padding[idx],
+                dilation_rate=dilation_rates[idx],
+                activation=activations[idx],
+                name=names[idx])(x)
         return x
 
     def block_1(b0):
-        b1_1 = Conv2D(filters=32,
-                      kernel_size=3,
-                      strides=2,
-                      padding='same',
-                      name='conv1_1_3x3_s2',
-                      activation='relu')(b0)
-        b1_2 = Conv2D(filters=32,
-                      kernel_size=3,
-                      padding='same',
-                      name='conv1_2_3x3',
-                      activation='relu')(b1_1)
-        b1_3 = Conv2D(filters=64,
-                      kernel_size=3,
-                      padding='same',
-                      name='conv1_3_3x3',
-                      activation='relu')(b1_2)
+        b1_1 = ConvBN(
+            filters=32,
+            kernel_size=3,
+            strides=2,
+            padding='same',
+            activation='relu',
+            name='conv1_1_3x3_s2')(b0)
+        b1_2 = ConvBN(
+            filters=32,
+            kernel_size=3,
+            padding='same',
+            activation='relu',
+            name='conv1_2_3x3')(b1_1)
+
+        b1_3 = ConvBN(
+            filters=64,
+            kernel_size=3,
+            padding='same',
+            name='conv1_3_3x3',
+            activation='relu')(b1_2)
+
         b1_4 = MaxPooling2D(pool_size=3,
                             strides=2,
                             padding='same')(b1_3)
@@ -65,33 +71,37 @@ def build(inp):
 
     def block_2(b1):
         def block_2_1(x):
-            main = conv_block(x,
-                              filters=32,
-                              name_infix='2_1',
-                              kernel_sizes=(1, 3, 1))
-            skip = Conv2D(filters=128,
-                          kernel_size=1,
-                          padding='same',
-                          name='conv2_1_1x1_proj')(x)
+            main = conv_block(
+                x,
+                filters=32,
+                name_infix='2_1',
+                kernel_sizes=(1, 3, 1))
+            skip = ConvBN(
+                filters=128,
+                kernel_size=1,
+                padding='same',
+                conv_name='conv2_1_1x1_proj')(x)
             x = Add()([main, skip])
             x = Activation('relu')(x)
             return x
 
         def block_2_2(x):
-            main = conv_block(x,
-                           filters=32,
-                           name_infix='2_1',
-                           kernel_sizes=(1, 3, 1))
+            main = conv_block(
+                x,
+                filters=32,
+                name_infix='2_1',
+                kernel_sizes=(1, 3, 1))
             skip = x
             x = Add()([main, skip])
             x = Activation('relu')(x)
             return x
 
         def block_2_3(x):
-            main = conv_block(x,
-                           filters=32,
-                           name_infix='2_1',
-                           kernel_sizes=(1, 3, 1))
+            main = conv_block(
+                x,
+                filters=32,
+                name_infix='2_1',
+                kernel_sizes=(1, 3, 1))
             skip = x
             x = Add()([main, skip])
             x = Activation('relu')(x)
@@ -106,28 +116,31 @@ def build(inp):
         def generic_block_3(x, name_infix, skip=None):
             skip = x if skip is None else skip(x)
             dilation_rates = ((1, 1), (1, 1), (1, 1))
-            main = conv_block(x,
-                              filters=64,
-                              name_infix=name_infix,
-                              kernel_sizes=(1, 3, 1),
-                              dilation_rates=dilation_rates)
+            main = conv_block(
+                x,
+                filters=64,
+                name_infix=name_infix,
+                kernel_sizes=(1, 3, 1),
+                dilation_rates=dilation_rates)
             x = Add()([main, skip])
             x = Activation('relu')(x)
             return x
 
         def block_3_1(x):
-            skip = Conv2D(filters=256,
-                          kernel_size=1,
-                          padding='same',
-                          name='conv2_1_1x1_proj')(x)
+            skip = ConvBN(
+                filters=256,
+                kernel_size=1,
+                padding='same',
+                name='conv2_1_1x1_proj')(x)
             x = generic_block_3(x, name_infix='3_1', skip=skip)
             return x
 
         def block_3_2(x):
             shape = [(it + 1) // 2 for it in K.int_shape(x)]
-            x = Lambda(interp,
-                       arguments={'shape': shape},
-                       name='conv3_1_sub4')(x)
+            x = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv3_1_sub4')(x)
             x = generic_block_3(x, name_infix='3_2')
             return x
 
@@ -141,19 +154,21 @@ def build(inp):
         def generic_block_4(x, name_infix, skip=None):
             skip = x if skip is None else skip(x)
             dilation_rates = ((1, 1), (2, 2), (1, 1))
-            main = conv_block(x,
-                              filters=128,
-                              name_infix=name_infix,
-                              kernel_sizes=[1, 3, 1],
-                              dilation_rates=dilation_rates)
+            main = conv_block(
+                x,
+                filters=128,
+                name_infix=name_infix,
+                kernel_sizes=[1, 3, 1],
+                dilation_rates=dilation_rates)
             x = Add()([main, skip])
             return x
 
         def block_4_1(x):
-            skip = Conv2D(filters=512,
-                          kernel_size=1,
-                          padding='same',
-                          name='conv4_1_1x1_proj')
+            skip = ConvBN(
+                filters=512,
+                kernel_size=1,
+                padding='same',
+                name='conv4_1_1x1_proj')
             x = generic_block_4(x, name_infix='4_1', skip=skip)
             return x
 
@@ -169,66 +184,85 @@ def build(inp):
         def generic_block_5(x, name_infix, skip=None):
             skip = x if skip is None else skip(x)
             dilation_rates = ((1, 1), (4, 4), (1, 1))
-            main = conv_block(x,
-                              filters=256,
-                              name_infix=name_infix,
-                              kernel_sizes=(1, 3, 1),
-                              dilation_rates=dilation_rates)
+            main = conv_block(
+                x,
+                filters=256,
+                name_infix=name_infix,
+                kernel_sizes=(1, 3, 1),
+                dilation_rates=dilation_rates)
             x = Add()([main, skip])
             x = Activation('relu')(x)
             return x
 
         def block_5_1(x):
-            skip = Conv2D(filters=1024,
-                          kernel_size=1,
-                          padding='same',
-                          name='conv5_1_1x1_proj')
+            skip = ConvBN(
+                filters=1024,
+                kernel_size=1,
+                padding='same',
+                name='conv5_1_1x1_proj')
             x = generic_block_5(x, name_infix='4_1', skip=skip)
             return x
 
         def pyramid_pooling_5(x):
             shape = [33, 65]
-            pool6 = AveragePooling2D(pool_size=[8, 15],
-                                     strides=[5, 10],
-                                     name='conv5_3_pool6')(x)
-            pool6 = Lambda(interp,
-                           arguments={'shape': shape},
-                           name='conv5_3_pool6_interp')(pool6)
+            pool6 = AveragePooling2D(
+                pool_size=[8, 15],
+                strides=[5, 10],
+                name='conv5_3_pool6')(x)
+            pool6 = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv5_3_pool6_interp')(pool6)
 
-            pool3 = AveragePooling2D(pool_size=[13, 25],
-                                     strides=[10, 20],
-                                     name='conv5_3_pool3')(x)
-            pool3 = Lambda(interp,
-                           arguments={'shape': shape},
-                           name='conv5_3_pool3_interp')(pool3)
+            pool3 = AveragePooling2D(
+                pool_size=[13, 25],
+                strides=[10, 20],
+                name='conv5_3_pool3')(x)
+            pool3 = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv5_3_pool3_interp')(pool3)
 
-            pool2 = AveragePooling2D(pool_size=[17, 33],
-                                     strides=[16, 32],
-                                     name='conv5_3_pool2')(x)
-            pool2 = Lambda(interp,
-                           arguments={'shape': shape},
-                           name='conv5_3_pool2_interp')(pool2)
+            pool2 = AveragePooling2D(
+                pool_size=[17, 33],
+                strides=[16, 32],
+                name='conv5_3_pool2')(x)
+            pool2 = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv5_3_pool2_interp')(pool2)
 
-            pool1 = AveragePooling2D(pool_size=[33, 65],
-                                     strides=[33, 65],
-                                     name='conv5_3_pool1')(x)
-            pool1 = Lambda(interp,
-                           arguments={'shape': shape},
-                           name='conv5_3_pool1_interp')(pool1)
+            pool1 = AveragePooling2D(
+                pool_size=[33, 65],
+                strides=[33, 65],
+                name='conv5_3_pool1')(x)
+            pool1 = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv5_3_pool1_interp')(pool1)
             x = Add()([x, pool1, pool2, pool3, pool6])
             return x
 
         def block_5_4(x):
-            x = Conv2D(filters=256,
-                       padding='same',
-                       kernel_size=1,
-                       strides=1,
-                       name='conv5_4_k1')(x)
-            x = Activation('relu')(x)
+            x = ConvBN(
+                filters=256,
+                padding='same',
+                kernel_size=1,
+                strides=1,
+                activation='relu',
+                name='conv5_4_k1')(x)
             shape = [it * 2 for it in K.int_shape(x)]
-            x = Lambda(interp,
-                       arguments={'shape': shape},
-                       name='conv5_4_interp')(x)
+            x = Lambda(
+                interp,
+                arguments={'shape': shape},
+                name='conv5_4_interp')(x)
+
+            x = ConvBN(
+                filters=128,
+                kernel_size=3,
+                dilation_rate=2,
+                padding='same',
+                name='conv_sub4')(x)
 
             return x
 
@@ -248,17 +282,13 @@ def build(inp):
     b3, b3a = block_3(b2)
     b4 = block_4(b3)
     b5 = block_5(b4)
-    b5b = Conv2D(filters=128,
-                 kernel_size=3,
-                 dilation_rate=2,
-                 padding='same',
-                 name='conv_sub4')(b5)
 
-    b3b = Conv2D(filters=128,
-                 kernel_size=1,
-                 padding='same',
-                 name='conv3_1_sub2_proj')(b3a)
-    x = Add(name='sub24_sum')([b3b, b5b])
+    b3b = ConvBN(
+        filters=128,
+        kernel_size=1,
+        padding='same',
+        name='conv3_1_sub2_proj')(b3a)
+    x = Add(name='sub24_sum')([b3b, b5])
     out = Activation('relu')(x)
 
     return out
