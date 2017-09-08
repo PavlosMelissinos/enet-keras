@@ -67,28 +67,13 @@ def predict(segmenter, img, h=None, w=None):
             raise
 
 
-if __name__ == '__main__':
-    dataset_name = 'mscoco'
+def load_mscoco_data(segmenter):
     data_type = 'val2014'
-    model_name = 'enet_unpooling'
-    pw = os.path.join('models', dataset_name, 'enet_unpooling', 'weights', '{}_best.h5'.format(model_name))
     out_directory = os.path.join('data', 'out', model_name)
 
-    dw = 256
-    dh = 256
     dataset = datasets.load(dataset_name=dataset_name, data_dir='data/mscoco', data_type=data_type)
-    nc = dataset.num_classes()
-
-    if K.backend() == 'tensorflow':
-        print('Tensorflow backend detected; Applying memory usage constraints')
-        ss = K.tf.Session(config=K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True)))
-        K.set_session(ss)
 
     print(pw)
-
-    autoencoder = models.select_model(model_name=model_name)
-    segmenter, model_name = autoencoder.build(nc=nc, w=dw, h=dh)
-    segmenter.load_weights(pw)
 
     instance_mode = False
     keep_context = 0.2
@@ -102,10 +87,41 @@ if __name__ == '__main__':
     else:
         data_gen = (sample[0] for sample in
                     dataset.sample_generator(instance_mode=instance_mode, keep_context=keep_context))
+    data = {
+        'data_gen': data_gen,
+        'num_instances': dataset.num_instances,
+        'dir_target': out_directory,
+        'keep_context': keep_context
+    }
+    return data
+
+
+def load_arbitrary_data(segmenter, image_filenames=None):
+    def data_generator():
+        for image_filename in image_filenames:
+            img = PILImage.open(image_filename)
+            resized_img = utils.resize(img, target_w=dw, target_h=dh)
+            yield resized_img
+
+    data = {
+        'data_gen': data_generator(),
+        'num_instances': len(image_filenames),
+        'dir_target': ,
+        'keep_context': keep_context
+    }
+    return data
+
+
+def run(segmenter, data):
+    data_gen = data['data_gen']
+    num_instances = data['num_instances']
+    out_directory = os.path.realpath(data['dir_target'])
+    keep_context = data['keep_context']
+
     for idx, image in enumerate(data_gen):
         if idx > 20:
             break
-        print('Processing {} out of {}'.format(idx+1, dataset.num_instances), end='\r')
+        print('Processing {} out of {}'.format(idx+1, num_instances), end='\r')
 
         pred_final, scores = predict(segmenter, image, h=dh, w=dw)
 
@@ -113,10 +129,12 @@ if __name__ == '__main__':
         pred_final = color_output_image(dataset, pred_final[:, :, 0])
         pred_final = array_to_img(pred_final)
 
-        out_file = os.path.join(os.path.realpath(out_directory),
-                                '{}_{}_{}_out.png'.format(idx,
-                                                          keep_context,
-                                                          utils.basename_without_ext(pw)))
+        out_file = os.path.join(
+            out_directory,
+            '{}_{}_{}_out.png'.format(
+                idx,
+                keep_context,
+                utils.basename_without_ext(pw)))
 
         sys.stdout.flush()
         if os.path.isfile(out_file):
@@ -127,3 +145,44 @@ if __name__ == '__main__':
         pilimg = PILImage.fromarray(image.astype(np.uint8), mode='RGB')
         pilimg.save(out_file.replace('_out.png', '.png'))
         pred_final.save(out_file)
+
+
+if __name__ == '__main__':
+    if K.backend() == 'tensorflow':
+        print('Tensorflow backend detected; Applying memory usage constraints')
+        ss = K.tf.Session(config=K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True)))
+        K.set_session(ss)
+
+    # debugging parameters
+    interim_testing = False
+
+    # parameters
+    dataset_name = 'mscoco'
+    load_mscoco = False
+    dw = 512
+    dh = 512
+    model_name = 'enet_unpooling'
+    pw = os.path.join('models', dataset_name, 'enet_unpooling', 'weights', '{}_best.h5'.format(model_name))
+    nc = datasets.load(dataset_name).num_classes()
+
+    autoencoder = models.select_model(model_name=model_name)
+    segmenter, model_name = autoencoder.build(nc=nc, w=dw, h=dh)
+    segmenter.load_weights(pw)
+
+    if load_mscoco:
+        data = load_mscoco_data(segmenter=segmenter)
+    else:
+        txt_file = sys.argv[1]
+        image_dir = os.path.dirname(txt_file)
+        with open(txt_file) as fin:
+            image_filenames = [os.path.join(image_dir, line.rstrip('\n')) for line in fin]
+            data = load_arbitrary_data(segmenter=segmenter, image_filenames=image_filenames)
+
+        data_gen = data['data_gen']
+        if interim_testing:
+            for idx, item in enumerate(data_gen):
+                filename, extension = os.path.splitext(image_filenames[idx])
+                out_filename = filename + '_interim_w{}_h{}'.format(dw, dh) + extension
+                PILImage.fromarray(item).save(out_filename)
+
+    run(segmenter=segmenter, data=data)
