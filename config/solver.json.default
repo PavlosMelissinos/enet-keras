@@ -1,14 +1,21 @@
 {
   "model_name": "enet_unpooling",
   "epochs": 100,
-  "batch_size": 8,
   "completed_epochs": 0,
-  "dh": 256,
-  "dw": 256,
-  "skip": 0,
-  "resize_mode": "stretch",
-  "instance_mode": false,
-  "dataset_name": "mscoco",
-  "cids": null,
-  "data_loader": null
+  "dh": 512,
+  "dw": 512,
+  "data_manager": {
+    "batch_size": 2,
+    "data_root": "data",
+    "dataset_name": "mscoco",
+    "train_data_type": "train2017",
+    "val_data_type": "val2017",
+    "test_data_type": "test2017",
+    "sample_size": null,
+    "instance_mode": false,
+    "keep_context": 0.25,
+    "merge_annotations": true,
+    "cover_gaps":true,
+    "resize_mode": "stretch"
+  }
 }

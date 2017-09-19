@@ -1,141 +1,43 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
 
-# global scope
+from keras import backend as K
 import json
 import numpy as np
 import os
-from keras import backend as K
-from keras.callbacks import TensorBoard, ModelCheckpoint
 
-# project scope
-from src.data import datasets
-from src.data.data_loader import load_data, batched, load_dataset
-from src.data.utils import ensure_dir
-from src.models import select_model
+from src.experiments.core import Experiment
 
 
-def callbacks(log_dir, checkpoint_dir, model_name):
-    """ 
-    :param log_dir: 
-    :param checkpoint_dir: 
-    :param model_name: 
-    :return: 
-    """
-    # TODO: Add ReduceLROnPlateau callback
-    cbs = []
+def old_dataset_loader(solver):
+    from src.data import datasets
+    data_config = solver['data_managers']
 
-    tb = TensorBoard(log_dir=log_dir,
-                     write_graph=True,
-                     write_images=True)
-    cbs.append(tb)
+    # transfer target dimensions to data configuration dictionary
+    data_config['default']['h'] = solver['dh']
+    data_config['default']['w'] = solver['dw']
+    dataset_name = data_config['dataset_name']
 
-    best_model = os.path.join(checkpoint_dir, '{}_best.h5'.format(model_name))
-    save_best = ModelCheckpoint(best_model, save_best_only=True)
-    cbs.append(save_best)
+    dataset_class = datasets.load(dataset_name=dataset_name)
 
-    checkpoint_file = os.path.join(checkpoint_dir, 'weights.' + model_name + '.{epoch:02d}-{val_loss:.2f}.h5')
-    checkpoints = ModelCheckpoint(filepath=checkpoint_file, verbose=1)
-    cbs.append(checkpoints)
+    data_config['data_type'] = data_config['train_data_type']
+    train_dataset = dataset_class(config=data_config)
 
-    # reduce_lr = ReduceLROnPlateau(monitor='val_loss',
-    #                               factor=0.1,
-    #                               patience=10,
-    #                               verbose=0,
-    #                               mode='auto',
-    #                               epsilon=0.0001,
-    #                               cooldown=0,
-    #                               min_lr=0)
-    # cbs.append(reduce_lr)
-    return cbs
+    data_config['data_type'] = data_config['val_data_type']
+    val_dataset = dataset_class(config=data_config)
+    return train_dataset, val_dataset
 
 
-def train(solver):
-    dataset_name = solver['dataset_name']
-
-    print('Preparing to train on {} data...'.format(dataset_name))
-
-    epochs = solver['epochs']
-    batch_size = solver['batch_size']
-    completed_epochs = solver['completed_epochs']
-    model_name = solver['model_name']
-
+if __name__ == '__main__':
     np.random.seed(1337)  # for reproducibility
-
-    dw = solver['dw']
-    dh = solver['dh']
-
-    resize_mode = str(solver['resize_mode'])
-    instance_mode = bool(solver['instance_mode'])
-
-    dataset = datasets.load(dataset_name)
-    nc = dataset.num_classes()  # categories + background
-
-    model = select_model(model_name=model_name)
-    autoencoder, model_name = model.build(nc=nc, w=dw, h=dh)
-    if 'h5file' in solver:
-        h5file = solver['h5file']
-        print('Loading model {}'.format(h5file))
-        h5file, ext = os.path.splitext(h5file)
-        autoencoder.load_weights(h5file + ext)
-    else:
-        autoencoder = model.transfer_weights(autoencoder)
-
     if K.backend() == 'tensorflow':
         print('Tensorflow backend detected; Applying memory usage constraints')
         ss = K.tf.Session(config=K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True)))
         K.set_session(ss)
         ss.run(K.tf.global_variables_initializer())
 
-    print('Done loading {} model!'.format(model_name))
-
-    experiment_dir = os.path.join('models', dataset_name, model_name)
-    log_dir = os.path.join(experiment_dir, 'logs')
-    checkpoint_dir = os.path.join(experiment_dir, 'weights')
-    ensure_dir(log_dir)
-    ensure_dir(checkpoint_dir)
-
-    train_dataset, train_generator = load_dataset(dataset_name=dataset_name,
-                                                  data_dir=os.path.join('data', dataset_name),
-                                                  data_type='train2014',
-                                                  instance_mode=instance_mode
-                                                  )
-    train_gen = load_data(dataset=train_dataset,
-                          generator=train_generator,
-                          target_h=dh, target_w=dw,
-                          resize_mode=resize_mode)
-    train_gen = batched(train_gen, batch_size)
-    nb_train_samples = train_dataset.num_instances if instance_mode else train_dataset.num_images
-    steps_per_epoch = nb_train_samples // batch_size
-
-    validation_steps = steps_per_epoch // 10
-    val_dataset, val_generator = load_dataset(dataset_name=dataset_name,
-                                              data_dir=os.path.join('data', dataset_name),
-                                              data_type='val2014',
-                                              sample_size=validation_steps*batch_size,
-                                              instance_mode=instance_mode
-                                              )
-    val_gen = load_data(dataset=val_dataset,
-                        generator=val_generator,
-                        target_h=dh, target_w=dw,
-                        resize_mode=resize_mode)
-    val_gen = batched(val_gen, batch_size)
-
-    autoencoder.fit_generator(generator=train_gen,
-                              steps_per_epoch=steps_per_epoch,
-                              epochs=epochs,
-                              verbose=1,
-                              callbacks=callbacks(log_dir, checkpoint_dir, model_name),
-                              validation_data=val_gen,
-                              validation_steps=validation_steps,
-                              initial_epoch=completed_epochs,
-                              )
-
-if __name__ == '__main__':
     solver_json = 'config/solver.json'
-
     print('solver json: {}'.format(os.path.abspath(solver_json)))
 
-    solver = json.load(open(solver_json))
-
-    train(solver=solver)
+    experiment = Experiment(solver=json.load(open(solver_json)))
+    experiment.run()

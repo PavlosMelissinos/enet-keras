@@ -39,7 +39,7 @@ def ensure_dir(f):
                 raise
 
 
-def normalized(img):
+def normalize(img):
     if isinstance(img, np.ndarray):
         processed_img = ImageOps.equalize(PILImage.fromarray(img, mode='RGB'))
     else:
@@ -210,3 +210,37 @@ def pillow_invert_channels(img):
     r, g, b = img.split()
     img = PILImage.merge("RGB", (b, g, r))
     return img
+
+
+def identity(*args):
+    if len(args) == 1:
+        return args[0]
+    return args
+
+# Temporary place for data preprocessing pipeline
+
+def preprocess_image(img):
+    # TODO: Populate with actual logic and move away from here into a dedicated class (like ImageDataGenerator)
+    # img = normalize(img, mode, target_type='numpy')
+    # return img
+    return img
+
+
+# def preprocess_label(lbl, mapper, nc, mode, keep_aspect_ratio=False):
+def preprocess_label(label):
+    """
+    load label image, keep a single channel (all three should be the same)
+    :param label:
+    :return:
+    """
+    # TODO: Populate with actual logic and move away from here into a dedicated class (like ImageDataGenerator)
+    # target = 'pillow' if mode == 'pillow' else 'numpy'
+    # # lbl = resize(lbl, target_h, target_w, mode=mode, target_type='numpy', keep_aspect_ratio=keep_aspect_ratio)
+    # if mode == 'pillow':
+    #     # lbl = np.expand_dims(lbl[:, :, 0], axis=2)
+    #     assert np.all(lbl[:, :, 0] == lbl[:, :, 1]) and np.all(lbl[:, :, 0] == lbl[:, :, 2])
+    #     lbl = lbl[:, :, 0].astype(np.uint8)
+    # array2d = mapper[lbl]
+    # onehot_lbl = to_categorical(array2d, num_classes=nc)
+    # return onehot_lbl
+    return label

@@ -16,7 +16,7 @@ def extract_coco_labels(data_dir, data_type, target_dir):
 
     total = len(coco.imgs)
     idx = 0
-    for res in mscoco.sample_generator(coco):
+    for res in mscoco.flow():
         if not res:
             status = 'Skip'
         else:
