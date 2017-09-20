@@ -23,20 +23,19 @@ def basename_without_ext(path_to_file):
     return os.path.splitext(bn)[0]
 
 
-def ensure_dir(f):
+def ensure_dir(dir_path):
     """
     Creates folder f if it doesn't exist
-    :param f: path to file
+    :param dir_path: directory path
     :return: 
     """
-    d = f
-    # d = os.path.dirname(f)
-    if not os.path.exists(d):
-        try:
-            os.makedirs(d)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
+    try:
+        os.makedirs(dir_path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(dir_path):
+            pass
+        else:
+            raise
 
 
 def normalize(img):

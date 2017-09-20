@@ -1,9 +1,8 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
-from keras.utils import get_file
-import errno
 import numpy as np
 import os
+import subprocess
 import time
 
 from .pycocotools import mask
@@ -11,56 +10,66 @@ from .pycocotools.coco import COCO
 from . import utils
 
 
+class MSCOCOConfigurator(object):
+    def __init__(self, config):
+        self.data_root = os.path.abspath(config['data_root'])
+        self.dataset_name = config['dataset_name']
+
+        # setup train data location
+        data_type = config['data_type']
+        valid_data_types = [
+            'train2014',
+            'val2014',
+            'test2014',
+            'test2015',
+            'train2017',
+            'val2017',
+            'test2017'
+        ]
+        if data_type not in valid_data_types:
+            errmsg = 'Unknown data type {}. Valid values are {}'.format(data_type,
+                                                                        valid_data_types)
+            raise ValueError(errmsg)
+        self.data_type = data_type
+
+        try:
+            dataset_dir = os.path.join(self.data_root, self.dataset_name)
+        except:
+            dataset_dir = os.path.join(os.path.expanduser('~'), '.datasets',
+                                       self.dataset_name)
+        self.annotation_file = os.path.join(dataset_dir,
+                                            'annotations',
+                                            'instances_' + self.data_type + '.json')
+        self.image_dir = os.path.join(dataset_dir, self.data_type, 'images')
+
+        self.data_dir = {
+            'dataset_root': dataset_dir,
+            'annotations': self.annotation_file,
+            'images': self.image_dir
+        }
+
+        self.instance_mode = config['instance_mode']
+
+        sample_size = config['sample_size']
+        sample_size = 1 if not sample_size else sample_size
+        if sample_size <= 1:
+            self.sample_factor = sample_size
+        else:
+            self.sample_size = sample_size
+        self.area_threshold = config[
+            'area_threshold'] if 'area_threshold' in config else 2500
+
+        # flow parameters, TODO: enable modification later
+        self.keep_context = config['keep_context']
+        self.merge_annotations = config['merge_annotations']
+        self.cover_gaps = config['cover_gaps']
+        self.resize_mode = config['resize_mode']
+        self.batch_size = config['batch_size']
+        self.target_height = config['h']
+        self.target_width = config['w']
+
+
 class MSCOCO(object):
-    class DataConfig(object):
-        def __init__(self, config):
-            self.data_root = config['data_root']
-            self.dataset_name = config['dataset_name']
-
-            # setup train data location
-            data_type = config['data_type']
-            valid_data_types = ['train2014', 'val2014', 'test2014', 'test2015',
-                                'train2017', 'val2017', 'test2017']
-            if data_type not in valid_data_types:
-                errmsg = 'Unknown data type {}. Valid values are {}'.format(data_type, valid_data_types)
-                raise ValueError(errmsg)
-            self.data_type = data_type
-
-            try:
-                dataset_dir = os.path.join(self.data_root, self.dataset_name)
-            except:
-                dataset_dir = os.path.join(os.path.expanduser('~'), '.datasets', self.dataset_name)
-            self.annotation_file = os.path.join(dataset_dir,
-                                                'annotations',
-                                                'instances_{}.json'.format(self.data_type))
-            self.image_dir = os.path.join(dataset_dir,
-                                          self.data_type,
-                                          'images')
-
-            self.data_dir = {
-                'annotations': self.annotation_file,
-                'images': self.image_dir
-            }
-
-            self.instance_mode = config['instance_mode']
-
-            sample_size = config['sample_size']
-            sample_size = 1 if not sample_size else sample_size
-            if sample_size <= 1:
-                self.sample_factor = sample_size
-            else:
-                self.sample_size = sample_size
-            self.area_threshold = config['area_threshold'] if 'area_threshold' in config else 2500
-
-            # flow parameters, TODO: enable modification later
-            self.keep_context = config['keep_context']
-            self.merge_annotations = config['merge_annotations']
-            self.cover_gaps = config['cover_gaps']
-            self.resize_mode = config['resize_mode']
-            self.batch_size = config['batch_size']
-            self.target_height = config['h']
-            self.target_width = config['w']
-
     NAME = 'mscoco'
     CATEGORIES = [
         'background',  # class zero
@@ -136,19 +145,22 @@ class MSCOCO(object):
 
         :param config: dictionary that stores dataset parameters, check docstring example
         """
-        self._config = MSCOCO.DataConfig(config)
+        self._config = MSCOCOConfigurator(config)
 
         # ensure data exists locally and load dataset
-        if not os.path.isfile(self._config.annotation_file):
+        ann_file = self._config.annotation_file
+        if not os.path.isfile(ann_file):
             print('Dataset not found. Downloading...')
-            self.download(data_dir=self._config.data_dir)
-        print('Initializing MS-COCO: Loading annotations from {}'.format(self._config.annotation_file))
-        self._coco = COCO(self._config.annotation_file)
+            self.download()
+        print('Initializing MS-COCO: Loading annotations from {}'.format(ann_file))
+        self._coco = COCO(ann_file)
 
         # build indices
         self._cid_to_id = {cid: idx for idx, cid in enumerate(self.IDS)}
-        self._category_to_id = {category: idx for idx, category in enumerate(self.CATEGORIES)}
-        self._palette_to_id = {category: idx for idx, category in enumerate(self.CATEGORIES)}
+        self._category_to_id = {category: idx
+                                for idx, category in enumerate(self.CATEGORIES)}
+        self._palette_to_id = {category: idx
+                               for idx, category in enumerate(self.CATEGORIES)}
 
         # pass through the dataset and count all valid samples
         # TODO: This should be moved to a method and allowed to be executed at any point
@@ -156,16 +168,16 @@ class MSCOCO(object):
         for idx, img_id in enumerate(self._coco.getImgIds()):
             annotation_ids = self._coco.getAnnIds(imgIds=img_id)
             for annotation in self._coco.loadAnns(annotation_ids):
-                if annotation['area'] > self._config.area_threshold:
+                if annotation['area'] > self.config.area_threshold:
                     sample_counter += 1
         self._num_instances = sample_counter
 
-        self._num_items = self.num_instances if self._config.instance_mode else self.num_images
-        if hasattr(self._config, 'sample_size'):
-            self._sample_size = min(self._num_items, self._config.sample_size)
+        self._num_items = self.num_instances if self.config.instance_mode else self.num_images
+        if hasattr(self.config, 'sample_size'):
+            self._sample_size = min(self._num_items, self.config.sample_size)
         else:
-            assert hasattr(self._config, 'sample_factor')
-            self._sample_size = int(self._config.sample_factor * self._num_items)
+            assert hasattr(self.config, 'sample_factor')
+            self._sample_size = int(self.config.sample_factor * self._num_items)
 
         image_ids = self._coco.getImgIds()
         self._image_ids = np.random.choice(image_ids,
@@ -212,67 +224,42 @@ class MSCOCO(object):
     def num_classes():
         return len(MSCOCO.IDS)
 
-    @staticmethod
-    def download(data_dir=None, data_subdir=None):
+    def download(self):
         """Download MSCOCO into data_dir, verify hashes, then extract files.
         If the files are already present, only the hashes are checked.
         """
-        if data_dir is None:
-            data_dir = os.path.join(os.path.expanduser('~'), '.keras')
-        if data_subdir is None:
-            data_subdir = os.path.join('datasets', 'coco')
 
         # http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
-        try:
-            os.makedirs(os.path.join(data_dir, data_subdir))
-        except OSError as exc:  # Python >2.5
-            if exc.errno == errno.EEXIST and os.path.isdir(os.path.join(data_dir, data_subdir)):
-                pass
-            else:
-                raise
-
-        urls = [
-            'http://msvocds.blob.core.windows.net/coco2014/train2014.zip',
-            'http://msvocds.blob.core.windows.net/coco2014/val2014.zip',
-            'http://msvocds.blob.core.windows.net/coco2014/test2014.zip',
-            'http://msvocds.blob.core.windows.net/coco2015/test2015.zip',
-            'http://msvocds.blob.core.windows.net/annotations-1-0-3/instances_train-val2014.zip',
-            'http://msvocds.blob.core.windows.net/annotations-1-0-3/person_keypoints_trainval2014.zip',
-            'http://msvocds.blob.core.windows.net/annotations-1-0-4/image_info_test2014.zip',
-            'http://msvocds.blob.core.windows.net/annotations-1-0-4/image_info_test2015.zip',
-            'http://msvocds.blob.core.windows.net/annotations-1-0-3/captions_train-val2014.zip'
-        ]
         data_prefixes = [
             'train2014',
             'val2014',
             'test2014',
             'test2015',
+            'train2017',
+            'val2017',
+            'test2017'
         ]
-        image_filenames = [prefix + '.zip' for prefix in data_prefixes]
-        annotation_filenames = [
-            'instances_train-val2014.zip',  # training AND validation info
-            'image_info_test2014.zip',  # basic info like download links + category
-            'image_info_test2015.zip',  # basic info like download links + category
-            'person_keypoints_trainval2014.zip',  # elbows, head, wrist etc
-            'captions_train-val2014.zip',  # descriptions of images
-        ]
-        md5s = [
-            '0da8c0bd3d6becc4dcb32757491aca88',  # train2014.zip
-            'a3d79f5ed8d289b7a7554ce06a5782b3',  # val2014.zip
-            '04127eef689ceac55e3a572c2c92f264',  # test2014.zip
-            '65562e58af7d695cc47356951578c041',  # test2015.zip
-            '59582776b8dd745d649cd249ada5acf7',  # instances_train-val2014.zip
-            '926b9df843c698817ee62e0e049e3753',  # person_keypoints_trainval2014.zip
-            'f3366b66dc90d8ae0764806c95e43c86',  # image_info_test2014.zip
-            '8a5ad1a903b7896df7f8b34833b61757',  # image_info_test2015.zip
-            '5750999c8c964077e3c81581170be65b'   # captions_train-val2014.zip
-        ]
-        filenames = image_filenames + annotation_filenames
 
-        print('Downloading dataset. Please wait, this will take a while...')
+        dataset_root = self.config.data_dir['dataset_root']
+        utils.ensure_dir(dataset_root)
+        # postfixes = [''] + data_prefixes + ['annotations']
+        # for postfix in postfixes:
+        #     utils.ensure_dir(os.path.join(dataset_root, postfix))
 
-        for url, filename, md5 in zip(urls, filenames, md5s):
-            path = get_file(filename, url, md5_hash=md5, extract=True, cache_subdir=data_subdir, cache_dir=data_dir)
+        print('Downloading images. Please wait, this will take a while...')
+        for prefix in data_prefixes:
+            url = 'gs://images.cocodataset.org/{}'.format(prefix)
+            utils.ensure_dir(os.path.join(dataset_root, prefix))
+            subprocess.call(['gsutil', '-m', 'rsync', url, prefix])
+        print('Done')
+
+        print('Downloading annotations. Please wait, this will take a while...')
+        ann_url = 'gs://images.cocodataset.org/annotations'
+        ann_dir = os.path.join(dataset_root, 'annotations')
+        utils.ensure_dir(ann_dir)
+        # run shell command, the following line does not work from within PyCharm
+        subprocess.call(['gsutil', '-m', 'rsync', ann_url, ann_dir])
+        print('Done')
 
     def load(self, data_dir, data_type):
         annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
