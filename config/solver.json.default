@@ -4,18 +4,24 @@
   "completed_epochs": 0,
   "dh": 512,
   "dw": 512,
-  "data_manager": {
+  "data": {
     "batch_size": 2,
     "data_root": "data",
     "dataset_name": "mscoco",
-    "train_data_type": "train2017",
-    "val_data_type": "val2017",
-    "test_data_type": "test2017",
-    "sample_size": null,
+    "sample_size": 0.01,
     "instance_mode": false,
     "keep_context": 0.25,
     "merge_annotations": true,
-    "cover_gaps":true,
-    "resize_mode": "stretch"
+    "cover_gaps": true,
+    "resize_mode": "stretch",
+    "train": {
+      "data_type": "train2017"
+    },
+    "val": {
+      "data_type": "val2017"
+    },
+    "test": {
+      "data_type": "test2017"
+    }
   }
 }
