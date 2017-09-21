@@ -228,26 +228,15 @@ class MSCOCO(object):
         """Download MSCOCO into data_dir, verify hashes, then extract files.
         If the files are already present, only the hashes are checked.
         """
-
         # http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
-        data_prefixes = [
-            'train2014',
-            'val2014',
-            'test2014',
-            'test2015',
-            'train2017',
-            'val2017',
-            'test2017'
-        ]
+        data_prefixes = [self.config.data_type]
 
         dataset_root = self.config.data_dir['dataset_root']
         utils.ensure_dir(dataset_root)
-        # postfixes = [''] + data_prefixes + ['annotations']
-        # for postfix in postfixes:
-        #     utils.ensure_dir(os.path.join(dataset_root, postfix))
 
         print('Downloading images. Please wait, this will take a while...')
         for prefix in data_prefixes:
+            print('Downloading {}...'.format(prefix))
             url = 'gs://images.cocodataset.org/{}'.format(prefix)
             target_dir = os.path.join(dataset_root, prefix)
             utils.ensure_dir(target_dir)
@@ -256,10 +245,28 @@ class MSCOCO(object):
 
         print('Downloading annotations. Please wait, this will take a while...')
         ann_url = 'gs://images.cocodataset.org/annotations'
-        ann_dir = os.path.join(dataset_root, 'annotations')
+        # ann_dir = os.path.join(dataset_root, 'annotations')
+        ann_dir = dataset_root
         utils.ensure_dir(ann_dir)
         # run shell command, the following line does not work from within PyCharm
         subprocess.call(['gsutil', '-m', 'rsync', ann_url, ann_dir])
+        print('Done')
+
+        print('Extracting annotation zip archives.')
+        zips = [
+            'annotations_trainval2014.zip',
+            'annotations_trainval2017.zip',
+            'image_info_test2014.zip',
+            'image_info_test2015.zip',
+            'image_info_test2017.zip',
+            'image_info_unlabeled2017.zip',
+            'stuff_annotations_trainval2017.zip',
+            'stuff_image_info_test2017.zip'
+        ]
+        for zip in zips:
+            zipfile = os.path.join(ann_dir, zip)
+            print(zipfile)
+            utils.unzip_and_remove(zipped_file=zipfile)
         print('Done')
 
     def load(self, data_dir, data_type):

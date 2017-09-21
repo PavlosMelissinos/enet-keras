@@ -216,6 +216,18 @@ def identity(*args):
         return args[0]
     return args
 
+
+def unzip_and_remove(zipped_file):
+    import zipfile
+
+    outpath = os.path.dirname(os.path.realpath(zipped_file))
+    with open(zipped_file, 'rb') as fin:
+        z = zipfile.ZipFile(file=fin)
+        z.extractall(outpath)
+        z.close()
+    # os.remove(zipped_file)
+
+
 # Temporary place for data preprocessing pipeline
 
 def preprocess_image(img):
