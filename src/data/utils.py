@@ -231,9 +231,19 @@ def unzip_and_remove(zipped_file):
 # Temporary place for data preprocessing pipeline
 
 def preprocess_image(img):
-    # TODO: Populate with actual logic and move away from here into a dedicated class (like ImageDataGenerator)
+    # TODO: Populate with actual logic
+    # TODO: move away from here into a dedicated class (like ImageDataGenerator)
     # img = normalize(img, mode, target_type='numpy')
     # return img
+
+    def standardize(img, minval=0, maxval=1):
+        # normalize to [minval, maxval]
+        standardized = img - np.min(img)
+        standardized = (maxval - minval) * standardized / np.max(standardized)
+        standardized += minval
+        return standardized
+
+    # img = standardize(img, minval=-1, maxval=1)
     return img
 
 

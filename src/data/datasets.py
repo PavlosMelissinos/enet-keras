@@ -40,12 +40,12 @@ class MSCOCOConfigurator(object):
         self.annotation_file = os.path.join(dataset_dir,
                                             'annotations',
                                             'instances_' + self.data_type + '.json')
-        self.image_dir = os.path.join(dataset_dir, self.data_type, 'images')
+        self.image_dir = os.path.join(dataset_dir, self.data_type)
 
         self.data_dir = {
             'dataset_root': dataset_dir,
             'annotations': self.annotation_file,
-            'images': self.image_dir
+            'images': self.image_dir,
         }
 
         self.instance_mode = config['instance_mode']
@@ -245,11 +245,8 @@ class MSCOCO(object):
 
         print('Downloading annotations. Please wait, this will take a while...')
         ann_url = 'gs://images.cocodataset.org/annotations'
-        # ann_dir = os.path.join(dataset_root, 'annotations')
-        ann_dir = dataset_root
-        utils.ensure_dir(ann_dir)
         # run shell command, the following line does not work from within PyCharm
-        subprocess.call(['gsutil', '-m', 'rsync', ann_url, ann_dir])
+        subprocess.call(['gsutil', '-m', 'rsync', ann_url, dataset_root])
         print('Done')
 
         print('Extracting annotation zip archives.')
@@ -264,7 +261,7 @@ class MSCOCO(object):
             'stuff_image_info_test2017.zip'
         ]
         for zip in zips:
-            zipfile = os.path.join(ann_dir, zip)
+            zipfile = os.path.join(dataset_root, zip)
             print(zipfile)
             utils.unzip_and_remove(zipped_file=zipfile)
         print('Done')
