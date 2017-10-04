@@ -6,8 +6,8 @@ from keras import backend as K
 
 def interp(x, shape):
     from keras.backend import tf as ktf
-    new_height, new_width = shape
-    resized = ktf.image.resize_images(x, [new_height, new_width],
+    target_h, target_w = shape
+    resized = ktf.image.resize_images(x, [target_h, target_w],
                                       align_corners=True)
     return resized
 
@@ -31,7 +31,6 @@ class Conv2D_BN(Conv2D):
                  momentum=0.95,
                  **kwargs):
         super(Conv2D_BN, self).__init__(
-            rank=2,
             filters=filters,
             kernel_size=kernel_size,
             strides=strides,

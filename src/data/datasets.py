@@ -10,67 +10,75 @@ from .pycocotools.coco import COCO
 from . import utils
 
 
-class MSCOCOConfigurator(object):
-    def __init__(self, config):
-        self.data_root = os.path.abspath(config['data_root'])
-        self.dataset_name = config['dataset_name']
-
-        # setup train data location
-        data_type = config['data_type']
-        valid_data_types = [
-            'train2014',
-            'val2014',
-            'test2014',
-            'test2015',
-            'train2017',
-            'val2017',
-            'test2017'
-        ]
-        if data_type not in valid_data_types:
-            errmsg = 'Unknown data type {}. Valid values are {}'.format(data_type,
-                                                                        valid_data_types)
-            raise ValueError(errmsg)
-        self.data_type = data_type
-
-        try:
-            dataset_dir = os.path.join(self.data_root, self.dataset_name)
-        except:
-            dataset_dir = os.path.join(os.path.expanduser('~'), '.datasets',
-                                       self.dataset_name)
-        self.annotation_file = os.path.join(dataset_dir,
-                                            'annotations',
-                                            'instances_' + self.data_type + '.json')
-        self.image_dir = os.path.join(dataset_dir, self.data_type)
-
-        self.data_dir = {
-            'dataset_root': dataset_dir,
-            'annotations': self.annotation_file,
-            'images': self.image_dir,
-        }
-
-        self.instance_mode = config['instance_mode']
-
-        sample_size = config['sample_size']
-        sample_size = 1 if not sample_size else sample_size
-        if sample_size <= 1:
-            self.sample_factor = sample_size
-        else:
-            self.sample_size = sample_size
-        self.area_threshold = config[
-            'area_threshold'] if 'area_threshold' in config else 2500
-
-        # flow parameters, TODO: enable modification later
-        self.keep_context = config['keep_context']
-        self.merge_annotations = config['merge_annotations']
-        self.cover_gaps = config['cover_gaps']
-        self.resize_mode = config['resize_mode']
-        self.batch_size = config['batch_size']
-        self.target_height = config['h']
-        self.target_width = config['w']
-
-
 class MSCOCO(object):
-    NAME = 'mscoco'
+    class Configurator(object):
+        def __init__(self, dataset_name, root_dir, data_type, batch_size, h, w,
+                     instance_mode,
+                     sample_size=None,
+                     area_threshold=2500,
+                     keep_context=0.25,
+                     merge_annotations=True,
+                     cover_gaps=True,
+                     resize_mode='stretch',
+                     **kwargs
+                     ):
+            self.data_root = os.path.abspath(root_dir)
+            self.dataset_name = dataset_name
+
+            # setup train data location
+            valid_data_types = [
+                'train2014',
+                'val2014',
+                'test2014',
+                'test2015',
+                'train2017',
+                'val2017',
+                'test2017'
+            ]
+            if data_type not in valid_data_types:
+                errmsg = 'Unknown data type {}. Valid values are {}'.format(
+                    data_type,
+                    valid_data_types
+                )
+                raise ValueError(errmsg)
+            self.data_type = data_type
+
+            try:
+                dataset_root = os.path.join(self.data_root, self.dataset_name)
+            except:
+                self.data_root = os.path.join(os.path.expanduser('~'),
+                                              '.datasets')
+                dataset_root = os.path.join(self.data_root,
+                                            self.dataset_name)
+            self.annotation_file = os.path.join(dataset_root,
+                                                'annotations',
+                                                'instances_' + self.data_type + '.json')
+            self.image_dir = os.path.join(dataset_root, self.data_type)
+
+            self.data_dir = {
+                'dataset_root': dataset_root,
+                'annotations': self.annotation_file,
+                'images': self.image_dir,
+            }
+
+            self.instance_mode = instance_mode
+
+            sample_size = 1 if not sample_size else sample_size
+            if sample_size <= 1:
+                self.sample_factor = sample_size
+            else:
+                self.sample_size = sample_size
+            self.area_threshold = area_threshold
+
+            # flow parameters, TODO: enable modification later
+            self.keep_context = keep_context
+            self.merge_annotations = merge_annotations
+            self.cover_gaps = cover_gaps
+            self.resize_mode = resize_mode
+            self.batch_size = batch_size
+            self.target_height = h
+            self.target_width = w
+
     CATEGORIES = [
         'background',  # class zero
         'person', 'bicycle', 'car', 'motorcycle', 'airplane',
@@ -112,40 +120,41 @@ class MSCOCO(object):
     #     0.0179, 0.0039, 0.0113, 0.0141, 0.0080, 0.0040, 0.0180, 0.0083
     # ]
 
-    CLASS_FREQUENCIES = [1.0] + [1 / 80] * 80
+    # CLASS_FREQUENCIES = [0.1] + [1 / 80] * 80
+    CLASS_FREQUENCIES = [1.0] * 81
 
-    def __init__(self, config):
+    def __init__(self, **kwargs):
         """
         Accepts as input a dictionary that looks like this:
 
         ```
         {
-          "model_name": "enet_unpooling",
-          "epochs": 100,
-          "completed_epochs": 0,
-          "dh": 512,
-          "dw": 512,
-          "data_manager": {
-            "batch_size": 2,
-            "data_root": "data",
-            "dataset_name": "mscoco",
-            "train_data_type": "train2017",
-            "val_data_type": "val2017",
-            "test_data_type": "test2017",
-            "sample_size": null,
-            "instance_mode": false,
-            "keep_context": 0.25,
-            "merge_annotations": true,
-            "cover_gaps":true,
-            "cids": null,
-            "resize_mode": "stretch"
+          "h": 512,
+          "w": 512,
+          "batch_size": 2,
+          "root_dir": "data",
+          "dataset_name": "mscoco",
+          "sample_size": 0.01,
+          "instance_mode": false,
+          "keep_context": 0.25,
+          "merge_annotations": true,
+          "cover_gaps": true,
+          "resize_mode": "stretch",
+          "train": {
+            "data_type": "train2017"
+          },
+          "val": {
+            "data_type": "val2017"
+          },
+          "test": {
+            "data_type": "test2017"
           }
         }
         ```
 
-        :param config: dictionary that stores dataset parameters, check docstring example
+        :param kwargs: dictionary that stores dataset parameters, check docstring example
         """
-        self._config = MSCOCOConfigurator(config)
+        self._config = MSCOCO.Configurator(**kwargs)
 
         # ensure data exists locally and load dataset
         ann_file = self._config.annotation_file
@@ -218,7 +227,7 @@ class MSCOCO(object):
 
     @staticmethod
     def class_weights():
-        return [1/cf for cf in MSCOCO.CLASS_FREQUENCIES]
+        return np.array([1/cf for cf in MSCOCO.CLASS_FREQUENCIES])
 
     @staticmethod
     def num_classes():
@@ -546,11 +555,13 @@ class DiskLoader(object):
         load file list from disk in pairs
         :return:
         """
-        img_txt = os.path.join(self.data_dir, self.data_type, 'images.txt')
-        lbl_txt = os.path.join(self.data_dir, self.data_type, 'labels.txt')
+        def join_paths(leaf):
+            return os.path.join(self.data_dir, self.data_type, leaf)
+        img_txt = join_paths('images.txt')
+        lbl_txt = join_paths('labels.txt')
         with open(img_txt) as image_data, open(lbl_txt) as label_data:
-            image_files = [os.path.join(self.data_dir, self.data_type, line.rstrip('\n')) for line in image_data]
-            label_files = [os.path.join(self.data_dir, self.data_type, line.rstrip('\n')) for line in label_data]
+            image_files = [join_paths(line.rstrip('\n')) for line in image_data]
+            label_files = [join_paths(line.rstrip('\n')) for line in label_data]
             assert len(image_files) == len(label_files)
             files = zip(image_files, label_files)
 
@@ -565,9 +576,5 @@ class DiskLoader(object):
             yield utils.load_image(img_path), utils.load_image(lbl_path)
 
 
-def load(dataset_name):
-    mapper = {
-        'mscoco': MSCOCO,
-        'disk': DiskLoader
-    }
-    return mapper[dataset_name]
+mscoco = MSCOCO
+disk = DiskLoader

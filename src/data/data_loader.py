@@ -45,8 +45,6 @@ def time_data_generator(data_generator, sample_size):
 
 def test_dataset(solver):
     data_config = solver['data']
-    data_config['h'] = solver['dh']
-    data_config['w'] = solver['dw']
     dataset_name = data_config['dataset_name']
 
     print('Preparing to train on {} data...'.format(dataset_name))
@@ -56,7 +54,7 @@ def test_dataset(solver):
 
     np.random.seed(1337)  # for reproducibility
 
-    dataset = datasets.load(dataset_name=dataset_name)(config=data_config)
+    dataset = getattr(datasets, dataset_name)(config=data_config)
 
     sample_size = 10
 
@@ -70,8 +68,6 @@ def test(solver):
     # sys.path.append(full_path)
 
     data_config = solver['data']
-    data_config['w'] = solver['dw']
-    data_config['h'] = solver['dh']
     supplementery_data_config = data_config['val']
     data_config.update(supplementery_data_config)
 
@@ -79,10 +75,10 @@ def test(solver):
 
     print('Loading {} data...'.format(dataset_name))
 
-    dataset = datasets.load(dataset_name=dataset_name)(config=data_config)
+    dataset = getattr(datasets, dataset_name)(config=data_config)
     print('Done')
 
-    for idx, item in enumerate(dataset.flow()):
+    for item in dataset.flow():
         img, lbl = item[0].astype(np.uint8), item[1]
         batch_size = img.shape[0]
         h = img.shape[1]

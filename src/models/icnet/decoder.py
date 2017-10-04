@@ -41,28 +41,27 @@ def conv_block_side(x):
     return x
 
 
-def build(inp, encoder, nc):
-    shape = [it * 2 for it in K.int_shape(encoder)]
+def build(inp, encoder, nc, valid_shapes):
+    side = conv_block_side(inp)
+
     x = Lambda(
         interp,
-        arguments={'shape': shape},
+        arguments={'shape': valid_shapes[3]},
         name='sub24_sum_interp')(encoder)
 
     main = ConvBN(
         filters=128,
         kernel_size=3,
         dilation_rate=2,
+        padding='same',
         name='conv_sub2')(x)
-
-    side = conv_block_side(inp)
 
     x = Add(name='sub12_sum')([main, side])
     x = Activation('relu')(x)
 
-    shape = [it * 2 for it in K.int_shape(x)]
     x = Lambda(
         interp,
-        arguments={'shape': shape},
+        arguments={'shape': valid_shapes[2]},
         name='sub12_sum_interp')(x)
 
     x = Conv2D(
@@ -70,10 +69,9 @@ def build(inp, encoder, nc):
         kernel_size=1,
         name='conv6_cls')(x)
 
-    shape = [it * 4 for it in K.int_shape(x)]
     out = Lambda(
         interp,
-        arguments={'shape': shape},
+        arguments={'shape': valid_shapes[0]},
         name='conv6_interp')(x)
 
     return out

@@ -7,6 +7,8 @@ def select_model(model_name):
         from .enet_unpooling import model
     elif model_name == 'enet_naive_upsampling':
         from .enet_naive_upsampling import model
+    elif model_name == 'icnet':
+        from .icnet import model
     else:
         raise ValueError('Unknown model {}'.format(model_name))
     return model

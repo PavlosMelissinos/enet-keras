@@ -21,7 +21,8 @@ def transfer_weights(model, weights=None):
 
 def build(nc, w, h,
           loss='categorical_crossentropy',
-          optimizer='adadelta'):
+          optimizer='adam',
+          **kwargs):
     data_shape = w * h if None not in (w, h) else -1  # TODO: -1 or None?
     inp = Input(shape=(h, w, 3))
     enet = encoder.build(inp)

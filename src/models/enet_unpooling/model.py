@@ -44,43 +44,48 @@ def transfer_weights(model, weights=None, keep_top=False):
         weights = os.path.join(project_root, 'models', 'pretrained', 'torch_enet.pkl')
     if not os.path.isfile(weights):
         print('ENet has found no compatible pretrained weights! Skipping weight transfer...')
-    with open(weights, 'rb') as fin:
-        weights_mem = pkl.load(fin)
-        idx = 0
-        for num, layer in enumerate(model.layers):
-            actual_num, layer = special_cases(num)  # special cases due to non-matching layer sequences
+    else:
+        print('Loading pretrained weights from {}'.format(weights))
+        with open(weights, 'rb') as fin:
+            weights_mem = pkl.load(fin)
+            idx = 0
+            for num, layer in enumerate(model.layers):
+                actual_num, layer = special_cases(num)  # special cases due to non-matching layer sequences
 
-            if not layer.weights:
-                continue
+                if not layer.weights:
+                    continue
 
-            item = weights_mem[idx]
-            layer_name = item['torch_typename']
-            new_values = layer.get_weights()
-            if layer_name == 'cudnn.SpatialConvolution' or layer_name == 'nn.SpatialDilatedConvolution':
-                if 'bias' in item:
-                    new_values = [item['weight'], item['bias']]
-                else:
-                    new_values = [item['weight']]
-            elif layer_name == 'nn.SpatialBatchNormalization':
-                new_values = [item['gamma'], item['beta'], item['moving_mean'], item['moving_variance']]
-            elif layer_name == 'nn.PReLU':
-                new_values = [item['weight']]
-            elif layer_name == 'nn.SpatialFullConvolution':
-                if keep_top:
+                item = weights_mem[idx]
+                layer_name = item['torch_typename']
+                new_values = layer.get_weights()
+                if layer_name in ['cudnn.SpatialConvolution',
+                                  'nn.SpatialDilatedConvolution']:
                     if 'bias' in item:
                         new_values = [item['weight'], item['bias']]
                     else:
                         new_values = [item['weight']]
-            else:
-                print('Unhandled layer type "{}"'.format(layer_name))
-            layer.set_weights(new_values)
-            idx += 1
+                elif layer_name == 'nn.SpatialBatchNormalization':
+                    new_values = [item['gamma'], item['beta'], item['moving_mean'], item['moving_variance']]
+                elif layer_name == 'nn.PReLU':
+                    new_values = [item['weight']]
+                elif layer_name == 'nn.SpatialFullConvolution':
+                    if keep_top:
+                        if 'bias' in item:
+                            new_values = [item['weight'], item['bias']]
+                        else:
+                            new_values = [item['weight']]
+                else:
+                    print('Unhandled layer type "{}"'.format(layer_name))
+                layer.set_weights(new_values)
+                idx += 1
     return model
 
 
 def build(nc, w, h,
           loss='categorical_crossentropy',
-          optimizer='adadelta'):
+          # optimizer='adadelta'):
+          optimizer='adam',
+          **kwargs):
     data_shape = w * h if None not in (w, h) else -1  # TODO: -1 or None?
     inp = Input(shape=(h, w, 3))
     enet = encoder.build(inp)
@@ -107,6 +112,7 @@ def main():
     autoencoder, model_name = build(nc=nc, w=dw, h=dh)
     plot_model(autoencoder, to_file=target_path, show_shapes=True)
     transfer_weights(model=autoencoder)
+
 
 if __name__ == "__main__":
     main()
