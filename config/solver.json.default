@@ -1,14 +1,23 @@
 {
-  "model_name": "enet_unpooling",
-  "epochs": 100,
-  "completed_epochs": 0,
-  "dh": 512,
-  "dw": 512,
+  "model": {
+    "root_dir": "models",
+    "name": "enet_unpooling",
+    "h": 512,
+    "w": 512,
+    "print_summary": false
+  },
+  "experiment": {
+    "root_dir": "experiments",
+    "epochs": 100,
+    "completed_epochs": 0
+  },
   "data": {
-    "batch_size": 2,
-    "data_root": "data",
-    "dataset_name": "mscoco",
-    "sample_size": 0.01,
+    "h": 512,
+    "w": 512,
+    "batch_size": 4,
+    "root_dir": "data",
+    "dataset_name": "MSCOCO",
+    "sample_size": 1,
     "instance_mode": false,
     "keep_context": 0.25,
     "merge_annotations": true,
