@@ -23,6 +23,7 @@ def transfer_weights(model, weights=None, keep_top=False):
 
     def special_cases(idx):
         """
+        Handles special cases due to non-matching layer sequences
         :param idx: original index of layer
         :return: the corrected index of the layer as well as the corresponding layer
         """
@@ -50,7 +51,8 @@ def transfer_weights(model, weights=None, keep_top=False):
             weights_mem = pkl.load(fin)
             idx = 0
             for num, layer in enumerate(model.layers):
-                actual_num, layer = special_cases(num)  # special cases due to non-matching layer sequences
+                # handle special cases due to non-matching layer sequences
+                actual_num, layer = special_cases(num)
 
                 if not layer.weights:
                     continue
@@ -65,7 +67,8 @@ def transfer_weights(model, weights=None, keep_top=False):
                     else:
                         new_values = [item['weight']]
                 elif layer_name == 'nn.SpatialBatchNormalization':
-                    new_values = [item['gamma'], item['beta'], item['moving_mean'], item['moving_variance']]
+                    new_values = [item['gamma'], item['beta'],
+                                  item['moving_mean'], item['moving_variance']]
                 elif layer_name == 'nn.PReLU':
                     new_values = [item['weight']]
                 elif layer_name == 'nn.SpatialFullConvolution':

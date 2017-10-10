@@ -1,4 +1,5 @@
 # coding=utf-8
+from keras.layers import Layer
 from keras.layers.convolutional import Conv2D
 from keras.layers.normalization import BatchNormalization
 from keras import backend as K
@@ -10,6 +11,28 @@ def interp(x, shape):
     resized = ktf.image.resize_images(x, [target_h, target_w],
                                       align_corners=True)
     return resized
+
+
+class Interp(Layer):
+    def __init__(self, target_h, target_w, **kwargs):
+        super(Interp, self).__init__(**kwargs)
+        self.target_h = target_h
+        self.target_w = target_w
+
+    def call(self, x, **kwargs):
+        from keras.backend import tf as ktf
+        # target_h, target_w = shape
+        resized = ktf.image.resize_images(x, [self.target_h, self.target_w],
+                                          align_corners=True)
+        return resized
+
+    def compute_output_shape(self, input_shape):
+        if K.image_data_format() == 'channels_last':
+            n, h, w, c = K.int_shape(input_shape)
+            return n, self.target_h, self.target_w, c
+        else:
+            n, c, h, w = K.int_shape(input_shape)
+            return n, c, self.target_h, self.target_w
 
 
 class Conv2D_BN(Conv2D):
