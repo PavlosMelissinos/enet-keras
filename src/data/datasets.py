@@ -243,7 +243,7 @@ class MSCOCO(object):
         dataset_root = self.config.data_dir['dataset_root']
         utils.ensure_dir(dataset_root)
 
-        print('Downloading images. Please wait, this will take a while...')
+        print('Syncing images. Please wait, this might take a while...')
         for prefix in data_prefixes:
             print('Downloading {}...'.format(prefix))
             url = 'gs://images.cocodataset.org/{}'.format(prefix)
@@ -252,10 +252,12 @@ class MSCOCO(object):
             subprocess.call(['gsutil', '-m', 'rsync', url, target_dir])
         print('Done')
 
-        print('Downloading annotations. Please wait, this will take a while...')
+        print('Syncing annotations. Please wait, this might take a while...')
         ann_url = 'gs://images.cocodataset.org/annotations'
-        # run shell command, the following line does not work from within PyCharm
+
+        # run shell command, the following does not work from within PyCharm
         subprocess.call(['gsutil', '-m', 'rsync', ann_url, dataset_root])
+
         print('Done')
 
         print('Extracting annotation zip archives.')
