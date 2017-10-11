@@ -89,11 +89,17 @@ ENV/
 .ropeproject
 
 
-# dataset related resources
+# project structure related resources
 data/*
+experiments/*
+pretrained/*
+
 # do not ignore dataset downloader
-!data/download_mscoco.sh
+!data/README.md
+!experiments/README.md
+!pretrained/README.md
 *.h5
 
 # ignore config
 *.json
+
