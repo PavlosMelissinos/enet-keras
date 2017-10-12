@@ -7,11 +7,11 @@ import numpy as np
 import os
 import sys
 
-from src.experiments.core import SemanticSegmentationExperiment
+from src import experiments
 
 
 def run():
-    mode = 'train'
+    mode = 'data'
     solver_file = os.path.join('config', 'solver.json')
     if len(sys.argv) > 1:
         mode = sys.argv[1]
@@ -24,7 +24,11 @@ def run():
     kwargs = json.load(open(solver_file))
 
     if mode == 'train':
-        experiment = SemanticSegmentationExperiment(**kwargs)
+        experiment = experiments.core.SemanticSegmentationExperiment(**kwargs)
+    elif mode == 'overfit':
+        experiment = experiments.core.OverfittingExperiment(**kwargs)
+    elif mode == 'data':
+        experiment = experiments.core.DryDatasetExperiment(**kwargs)
     else:
         errmsg = 'This script only supports training at the moment'
         raise NotImplementedError(errmsg)
@@ -42,4 +46,3 @@ if __name__ == '__main__':
         ss.run(K.tf.global_variables_initializer())
 
     run()
-

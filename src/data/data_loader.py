@@ -78,7 +78,7 @@ def test(solver):
     dataset = getattr(datasets, dataset_name)(config=data_config)
     print('Done')
 
-    for item in dataset.flow():
+    for idx, item in enumerate(dataset.flow()):
         img, lbl = item[0].astype(np.uint8), item[1]
         batch_size = img.shape[0]
         h = img.shape[1]

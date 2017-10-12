@@ -1,5 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
+from six import with_metaclass
+import abc
 import numpy as np
 import os
 import subprocess
@@ -10,7 +12,31 @@ from .pycocotools.coco import COCO
 from . import utils
 
 
-class MSCOCO(object):
+class Dataset(with_metaclass(abc.ABCMeta, object)):
+    @abc.abstractmethod
+    def flow(self, transform=True, batch=True, single_pass=False,
+             *args, **kwargs):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def steps(self):
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def num_classes():
+        pass
+
+
+class CaptioningDataset(Dataset):
+    @property
+    @abc.abstractmethod
+    def vocab(self):
+        pass
+
+
+class MSCOCO(Dataset):
     class Configurator(object):
         def __init__(self, dataset_name, root_dir, data_type, batch_size, h, w,
                      instance_mode,
@@ -290,16 +316,16 @@ class MSCOCO(object):
 
         annotation_counter = 0
 
-        while True:
-            for img_id in self._image_ids:
-                annotation_ids = self._coco.getAnnIds(imgIds=img_id)
-                for annotation in self._coco.loadAnns(annotation_ids):
-                    if annotation['area'] > self._config.area_threshold:
-                        yield annotation
-            if annotation_counter == 0:
-                errmsg = 'Every annotation has been filtered out. ' \
-                         'Decrease area threshold or increase image dimensions.'
-                raise(Exception(errmsg))
+        for img_id in self._image_ids:
+            annotation_ids = self._coco.getAnnIds(imgIds=img_id)
+            for annotation in self._coco.loadAnns(annotation_ids):
+                if annotation['area'] > self._config.area_threshold:
+                    annotation_counter += 1
+                    yield annotation
+        if annotation_counter == 0:
+            errmsg = 'Every annotation has been filtered out. ' \
+                     'Decrease area threshold or increase image dimensions.'
+            raise Exception(errmsg)
 
     def _retrieve_sample(self, annotation):
         epsilon = 0.05
@@ -347,33 +373,32 @@ class MSCOCO(object):
         epsilon = 0.05
         high_val = 1 - epsilon
         low_val = 0 + epsilon
-        while True:
-            for img_id in self._image_ids:
-                coco_image = self._coco.loadImgs(int(img_id))[0]
+        for img_id in self._image_ids:
+            coco_image = self._coco.loadImgs(int(img_id))[0]
 
-                image_path = os.path.join(self._config.data_dir['images'], coco_image['file_name'])
-                image = utils.load_image(image_path)
-                # TODO: maybe it's faster to resize the image here
+            image_path = os.path.join(self._config.data_dir['images'], coco_image['file_name'])
+            image = utils.load_image(image_path)
+            # TODO: maybe it's faster to resize the image here
 
-                target_h = coco_image['height']
-                target_w = coco_image['width']
+            target_h = coco_image['height']
+            target_w = coco_image['width']
 
-                mask_one_hot = np.full((target_h, target_w, self.num_classes()), low_val, dtype=np.float32)
-                mask_one_hot[:, :, 0] = high_val  # every pixel begins as background
+            mask_one_hot = np.full((target_h, target_w, self.num_classes()), low_val, dtype=np.float32)
+            mask_one_hot[:, :, 0] = high_val  # every pixel begins as background
 
-                annotation_ids = self._coco.getAnnIds(imgIds=coco_image['id'])
+            annotation_ids = self._coco.getAnnIds(imgIds=coco_image['id'])
 
-                for annotation in self._coco.loadAnns(annotation_ids):
-                    mask_partial = self._coco.annToMask(annotation)
-                    assert mask_one_hot.shape[:2] == mask_partial.shape[:2]  # width and height match
-                    if self._config.cover_gaps:
-                        class_index = self._cid_to_id[annotation['category_id']]
-                    else:
-                        class_index = annotation['category_id']
-                    assert class_index > 0
-                    mask_one_hot[mask_partial > low_val, class_index] = high_val
-                    mask_one_hot[mask_partial > low_val, 0] = low_val
-                yield image, mask_one_hot
+            for annotation in self._coco.loadAnns(annotation_ids):
+                mask_partial = self._coco.annToMask(annotation)
+                assert mask_one_hot.shape[:2] == mask_partial.shape[:2]  # width and height match
+                if self._config.cover_gaps:
+                    class_index = self._cid_to_id[annotation['category_id']]
+                else:
+                    class_index = annotation['category_id']
+                assert class_index > 0
+                mask_one_hot[mask_partial > low_val, class_index] = high_val
+                mask_one_hot[mask_partial > low_val, 0] = low_val
+            yield image, mask_one_hot
 
     def transform(self, img, lbl, flatten_labels=True):
         resize_mode = self._config.resize_mode
@@ -429,7 +454,7 @@ class MSCOCO(object):
 
         return resized_image, resized_label
 
-    def flow(self, transform=True, batch=True):
+    def flow(self, transform=True, batch=True, single_pass=False, **kwargs):
         def naive_flow():
             if self._config.instance_mode:
                 return (self._retrieve_instance(item) for item in self._annotation_generator())
@@ -438,24 +463,33 @@ class MSCOCO(object):
             else:
                 return (self._retrieve_sample(item) for item in self._annotation_generator())
 
-        h = self._config.target_height
-        w = self._config.target_width
+        def secondary_flow():
+            h = self._config.target_height
+            w = self._config.target_width
 
-        if batch:
-            batch_size = self._config.batch_size
-            target_images = np.zeros(shape=(batch_size, h, w, 3))
-            target_labels = np.zeros(shape=(batch_size, h * w, self.num_classes()))
-            for idx, (img, lbl) in enumerate(naive_flow()):
-                j = idx % batch_size
-                target_images[j], target_labels[j] = self.transform(img, lbl)
-                if j == batch_size - 1:
-                    yield target_images, target_labels
-        elif transform:
-            for img, lbl in naive_flow():
-                yield self.transform(img, lbl)
-        else:
-            for img, lbl in naive_flow():
-                yield img, lbl
+            if batch:
+                batch_size = self._config.batch_size
+                target_images = np.zeros(shape=(batch_size, h, w, 3))
+                target_labels = np.zeros(shape=(batch_size, h * w, self.num_classes()))
+                for idx, (img, lbl) in enumerate(naive_flow()):
+                    j = idx % batch_size
+                    target_images[j], target_labels[j] = self.transform(img, lbl)
+                    if j == batch_size - 1:
+                        yield target_images, target_labels
+            elif transform:
+                for img, lbl in naive_flow():
+                    yield self.transform(img, lbl)
+            else:
+                for img, lbl in naive_flow():
+                    yield img, lbl
+
+        while True:
+            for image, label in secondary_flow():
+                inputs = {'image': image}
+                outputs = {'output': label}
+                yield inputs, outputs
+            if single_pass:
+                break
 
     @staticmethod
     def mask_to_mscoco(alpha, annotations, img_id, mode='rle'):
@@ -546,7 +580,7 @@ class MSCOCO(object):
 #                 yield ann
 
 
-class DiskLoader(object):
+class DiskLoader(Dataset):
     def __init__(self, config):
         self.data_dir = config['data_dir']
         self.data_type = config['data_type']
@@ -573,7 +607,8 @@ class DiskLoader(object):
             files = files[:self.sample_size]
         return files
 
-    def flow(self):
+    def flow(self, transform=True, batch=True, single_pass=False,
+             *args, **kwargs):
         for img_path, lbl_path in self.collect_image_files_from_disk():
             yield utils.load_image(img_path), utils.load_image(lbl_path)
 

@@ -106,8 +106,6 @@ class Experiment(object):
             autoencoder.load_weights(h5file + ext)
         except KeyError:
             autoencoder = model.transfer_weights(autoencoder)
-
-        print('Done loading {} model!'.format(self.model_name))
         return autoencoder
 
     def run(self):
@@ -116,6 +114,8 @@ class Experiment(object):
         train_dataset = self.dataset(data_split='train')
         val_dataset = self.dataset(data_split='val')
         model = self.model()
+
+        print('Preparing to start training')
         model.fit_generator(
             generator=train_dataset.flow(),
             steps_per_epoch=train_dataset.steps,
@@ -155,25 +155,83 @@ class CaptioningExperiment(Experiment):
 
 class DryDatasetExperiment(Experiment):
     def __init__(self, data, model, experiment, **kwargs):
-        super(DryDatasetExperiment, self).__init__(data, model, experiment, **kwargs)
+        super(DryDatasetExperiment, self).__init__(
+            data=data,
+            experiment=experiment,
+            model=model,
+            **kwargs
+        )
+
+    def split_label_channels(self, label):
+        binary_masks = {}
+        for i in range(label.shape[-1]):
+            binary_mask = label[..., i]
+            if not np.any(binary_mask > 0):
+                continue
+            binary_mask[binary_mask > 0] = 1
+            binary_masks[i] = binary_mask.astype(np.uint8)
+        return binary_masks
 
     def run(self):
+        from matplotlib import pyplot as plt
+        import sys
+
+        np.random.seed(1337)  # for reproducibility
+
         dataset = self.dataset(data_split='val')
-        for item in dataset.flow():
-            for item_idx in range(dataset.config.batch_size):
-                text = [dataset.vocab.decode(idx)
-                        for idx in np.argmax(item[0]['text'][item_idx], axis=-1)]
-                output = [dataset.vocab.decode(idx)
-                          for idx in np.argmax(item[1]['output'][item_idx], axis=-1)]
-                # print(' '.join(text))
-                # print(' '.join(output))
+
+        for idx, item in enumerate(dataset.flow()):
+            img, lbl = item[0]['image'].astype(np.uint8), item[1]['output']
+            batch_size = img.shape[0]
+            h = img.shape[1]
+            w = img.shape[2]
+            nc = lbl.shape[-1]
+            lbl = np.reshape(lbl, (batch_size, h, w, nc))
+            # batch_size = dataset.config.batch_size
+            for batch_index in range(batch_size):
+                binary_masks = self.split_label_channels(lbl[batch_index, ...])
+                img_item = img[batch_index, ...]
+                for class_idx, binary_mask in binary_masks.items():
+                    # class_name = dataset.CATEGORIES[dataset.IDS[class_idx]]
+                    class_name = dataset.CATEGORIES[class_idx]
+
+                    plt.rcParams["figure.figsize"] = [4 * 3, 4]
+
+                    fig = plt.figure()
+
+                    subplot1 = fig.add_subplot(131)
+                    subplot1.imshow(img_item)
+                    subplot1.set_title('rgb image')
+                    subplot1.axis('off')
+
+                    subplot2 = fig.add_subplot(132)
+                    subplot2.imshow(binary_mask, cmap='gray')
+                    subplot2.set_title('{} binary mask'.format(class_name))
+                    subplot2.axis('off')
+
+                    subplot3 = fig.add_subplot(133)
+                    masked = np.array(img_item)
+                    masked[binary_mask == 0] = 0
+                    subplot3.imshow(masked)
+                    subplot3.set_title('{} label'.format(class_name))
+                    subplot3.axis('off')
+
+                    fig.tight_layout()
+                    plt.show()
+            # shapes.append(img.shape)
+                item_idx = batch_size * idx + batch_index + 1
+                print('Processed {} items: ({})'.format(item_idx, type(item)),
+                      end='\r')
+            sys.stdout.flush()
 
 
-class OverfittingCaptioningExperiment(CaptioningExperiment):
+class DryDatasetCaptioningExperiment(CaptioningExperiment):
     def __init__(self, data, model, experiment, **kwargs):
-        data['sample_size'] = 0.01
-        super(OverfittingCaptioningExperiment, self).__init__(
-            data, model, experiment, **kwargs
+        super(DryDatasetCaptioningExperiment, self).__init__(
+            data=data,
+            experiment=experiment,
+            model=model,
+            **kwargs
         )
 
     def run(self):
@@ -186,6 +244,36 @@ class OverfittingCaptioningExperiment(CaptioningExperiment):
                           for idx in np.argmax(item[1]['output'][item_idx], axis=-1)]
                 # print(' '.join(text))
                 # print(' '.join(output))
+
+
+class OverfittingExperiment(Experiment):
+    def __init__(self, data, model, experiment, **kwargs):
+        data['sample_size'] = 50
+        experiment['epochs'] = 2
+        super(OverfittingExperiment, self).__init__(
+            data=data,
+            experiment=experiment,
+            model=model,
+            **kwargs
+        )
+
+    def run(self):
+        dataset = self.dataset(data_split='train')
+        model = self.model()
+        model.fit_generator(
+            generator=dataset.flow(),
+            steps_per_epoch=dataset.steps,
+            epochs=self.experiment_config['epochs'],
+            verbose=1,
+            # validation_data=dataset.flow(),
+            # validation_steps=dataset.steps,
+            initial_epoch=self.experiment_config['completed_epochs'],
+        )
+        for inputs, outputs in dataset.flow(single_pass=True):
+            predictions = model.predict(inputs)
+            for prediction, output in zip(predictions, outputs['output']):
+                pass
+        print('End of overfitting experiment')
 
 
 class SemanticSegmentationExperiment(Experiment):

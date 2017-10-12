@@ -1,4 +1,4 @@
-name: enetclean2
+name: enet-keras
 channels:
 - defaults
 dependencies:
@@ -34,5 +34,5 @@ dependencies:
   - tensorflow-gpu==1.3.0
   - tensorflow-tensorboard==0.1.8
   - werkzeug==0.12.2
-prefix: /home/pmelissi/miniconda2/envs/enetclean2
+prefix: /home/pmelissi/miniconda2/envs/enet-keras
 
