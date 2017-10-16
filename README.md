@@ -37,8 +37,10 @@ make
 
 ### Set up data/model
 
-`cd enet-keras`
-`./setup.sh`
+```
+cd enet-keras
+./setup.sh
+```
 
 The setup script only sets up some directories and converts the model to an appropriate format.
 
