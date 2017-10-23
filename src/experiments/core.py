@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
+from matplotlib import pyplot as plt
 
 import numpy as np
 import os
@@ -126,6 +127,72 @@ class Experiment(object):
             validation_steps=val_dataset.steps,
             initial_epoch=self.experiment_config['completed_epochs'],
         )
+
+
+class InferenceExperiment(Experiment):
+    def __init__(self, data, experiment, model, **kwargs):
+        super(InferenceExperiment, self).__init__(data, experiment, model, **kwargs)
+
+    def model(self):
+        model_name = 'enet_unpooling'
+        # model_name = 'enet_unpooling_weights_simple_setup'
+        # model_name = 'enet_unpooling_no_weights'
+        dataset_name = self.data_config['dataset_name']
+        root_dir = 'experiments'
+        pw = os.path.join(
+            root_dir, dataset_name,
+            model_name,
+            'weights',
+            # 'weights.enet_unpooling.02-2.59.h5'
+            '{}_best.h5'.format(model_name)
+        )
+
+        # print(pw)
+
+        nc = getattr(datasets, dataset_name).num_classes()
+        self.model_config['nc'] = nc
+
+        autoencoder = select_model(model_name=model_name)
+        # segmenter, model_name = autoencoder.build(nc=nc, w=w, h=h)
+        segmenter, model_name = autoencoder.build(**self.model_config)
+        segmenter.load_weights(pw)
+        return segmenter
+
+    def run(self):
+        model = self.model()
+        dataset = self.dataset()
+        for image_batch, target_batch in dataset.flow():
+            image_batch = image_batch['image']
+            target_batch = target_batch['output']
+            for image, target in zip(image_batch, target_batch):
+                output = model.predict(np.expand_dims(image, axis=0))[0]
+                output = np.reshape(np.argmax(output, axis=-1), newshape=(512, 512))
+
+                target = np.reshape(np.argmax(target, axis=-1), newshape=(512, 512))
+
+                plt.rcParams["figure.figsize"] = [4 * 3, 4]
+
+                fig = plt.figure()
+
+                subplot1 = fig.add_subplot(131)
+                subplot1.imshow(image.astype(np.uint8))
+                subplot1.set_title('rgb image')
+                subplot1.axis('off')
+
+                subplot2 = fig.add_subplot(132)
+                subplot2.imshow(output, cmap='gray')
+                subplot2.set_title('Prediction')
+                subplot2.axis('off')
+
+                subplot3 = fig.add_subplot(133)
+                masked = np.array(target)
+                masked[target == 0] = 0
+                subplot3.imshow(masked, cmap='gray')
+                subplot3.set_title('Targets')
+                subplot3.axis('off')
+
+                fig.tight_layout()
+                plt.show()
 
 
 class CaptioningExperiment(Experiment):

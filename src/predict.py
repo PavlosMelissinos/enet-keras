@@ -4,16 +4,18 @@ from __future__ import absolute_import, print_function
 from PIL import Image as PILImage
 import numpy as np
 import os
+import six
 import sys
 
 from keras import backend as K
 from keras.preprocessing.image import array_to_img
 
 from src.data import datasets, utils
+from src.experiments.core import Experiment
 import models
 
 
-def color_output_image(dataset, img, mode='bw'):
+def color_output_image(colormap, img, mode='bw'):
     """
     move this into datasets.py
     :param dataset: 
@@ -25,9 +27,8 @@ def color_output_image(dataset, img, mode='bw'):
     if mode == 'bw':
         cv_image[img > 0] = 255
     elif mode == 'class_palette':
-        colormap = dataset.id_to_palette_map()
         img = np.asarray(img, dtype=np.uint8).reshape(img.size[0], img.size[1])
-        for cid, color in colormap.iteritems():
+        for cid, color in six.iteritems(colormap):
             cv_image[img == cid] = color
     else:
         raise ValueError('Unknown coloring mode: Expected one of {}; got {}'.format(['bw', 'class_palette'], mode))
@@ -43,7 +44,7 @@ def predict(segmenter, img, h=None, w=None):
         w = ow if w is None else w
 
         img = utils.resize(img, target_h=h, target_w=w)
-        img = np.expand_dims(utils.normalized(img), axis=0)
+        img = np.expand_dims(utils.normalize(img), axis=0)
         pred = segmenter.predict(img)[0]
         nc = pred.shape[-1]
         scores = np.max(pred, axis=1)
@@ -67,13 +68,14 @@ def predict(segmenter, img, h=None, w=None):
             raise
 
 
-def load_mscoco_data(segmenter):
+def load_mscoco_data():
     data_type = 'val2014'
     out_directory = os.path.join('data', 'out', model_name)
+    config = {'dataset_name': 'MSCOCO',
+              'data_dir': 'data/MSCOCO',
+              'data_type': data_type}
 
-    dataset = datasets.load(dataset_name=dataset_name, data_dir='data/mscoco', data_type=data_type)
-
-    print(pw)
+    dataset = getattr(datasets, config['dataset_name'])(**config)
 
     instance_mode = False
     keep_context = 0.2
@@ -86,17 +88,22 @@ def load_mscoco_data(segmenter):
         data_gen = (utils.load_image(imfile) for imfile in files)
     else:
         data_gen = (sample[0] for sample in
-                    dataset.sample_generator(instance_mode=instance_mode, keep_context=keep_context))
+                    dataset.flow())
     data = {
-        'data_gen': data_gen,
+        'generator': data_gen,
+        'root_dir': 'data',
         'num_instances': dataset.num_instances,
         'dir_target': out_directory,
-        'keep_context': keep_context
+        'keep_context': keep_context,
+        'dataset_name': 'MSCOCO',
+        'data_type': 'val2017'
     }
     return data
 
 
-def load_arbitrary_data(segmenter, image_filenames=None):
+def load_arbitrary_data(image_filenames=None):
+    out_directory = os.path.join('data', 'out', model_name)
+
     def data_generator():
         for image_filename in image_filenames:
             img = PILImage.open(image_filename)
@@ -104,10 +111,13 @@ def load_arbitrary_data(segmenter, image_filenames=None):
             yield resized_img
 
     data = {
-        'data_gen': data_generator(),
+        'generator': data_generator(),
+        'root_dir': 'data',
         'num_instances': len(image_filenames),
-        'dir_target': ,
-        'keep_context': keep_context
+        'dir_target': out_directory,
+        'keep_context': 0,
+        'dataset_name': 'MSCOCO',
+        'data_type': None
     }
     return data
 
@@ -117,6 +127,8 @@ def run(segmenter, data):
     num_instances = data['num_instances']
     out_directory = os.path.realpath(data['dir_target'])
     keep_context = data['keep_context']
+    # dataset = getattr(datasets, data['dataset_name'])(**data)
+    dataset = getattr(datasets, data['dataset_name'])
 
     for idx, image in enumerate(data_gen):
         if idx > 20:
@@ -126,7 +138,7 @@ def run(segmenter, data):
         pred_final, scores = predict(segmenter, image, h=dh, w=dw)
 
         # draw prediction as rgb
-        pred_final = color_output_image(dataset, pred_final[:, :, 0])
+        pred_final = color_output_image(dataset.palette, pred_final[:, :, 0])
         pred_final = array_to_img(pred_final)
 
         out_file = os.path.join(
@@ -147,42 +159,51 @@ def run(segmenter, data):
         pred_final.save(out_file)
 
 
-if __name__ == '__main__':
-    if K.backend() == 'tensorflow':
-        print('Tensorflow backend detected; Applying memory usage constraints')
-        ss = K.tf.Session(config=K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True)))
-        K.set_session(ss)
-
-    # debugging parameters
-    interim_testing = False
-
-    # parameters
-    dataset_name = 'mscoco'
-    load_mscoco = False
-    dw = 512
-    dh = 512
-    model_name = 'enet_unpooling'
-    pw = os.path.join('models', dataset_name, 'enet_unpooling', 'weights', '{}_best.h5'.format(model_name))
-    nc = datasets.load(dataset_name).num_classes()
-
-    autoencoder = models.select_model(model_name=model_name)
-    segmenter, model_name = autoencoder.build(nc=nc, w=dw, h=dh)
-    segmenter.load_weights(pw)
+def load_data(**kwargs):
+    load_mscoco = kwargs['load_mscoco']
+    interim_testing = kwargs['interim_testing']
 
     if load_mscoco:
-        data = load_mscoco_data(segmenter=segmenter)
+        data = load_mscoco_data()
     else:
         txt_file = sys.argv[1]
         image_dir = os.path.dirname(txt_file)
         with open(txt_file) as fin:
             image_filenames = [os.path.join(image_dir, line.rstrip('\n')) for line in fin]
-            data = load_arbitrary_data(segmenter=segmenter, image_filenames=image_filenames)
+            data = load_arbitrary_data(image_filenames=image_filenames)
 
-        data_gen = data['data_gen']
         if interim_testing:
-            for idx, item in enumerate(data_gen):
+            for idx, item in enumerate(data['data_gen']):
                 filename, extension = os.path.splitext(image_filenames[idx])
-                out_filename = filename + '_interim_w{}_h{}'.format(dw, dh) + extension
+                out_filename = filename + '_interim_w{}_h{}'.format(w, h) + extension
                 PILImage.fromarray(item).save(out_filename)
+    return data
+
+
+def main():
+    # parameters
+    kwargs = {
+        'dataset_name': 'MSCOCO',
+        'load_mscoco': False,
+        'w': 256,
+        'h': 256,
+        'interim_testing': False
+    }
+
+    Experiment(**kwargs)
+
+    segmenter = load_model(**kwargs)
+    data = load_data()
 
     run(segmenter=segmenter, data=data)
+
+
+if __name__ == '__main__':
+    if K.backend() == 'tensorflow':
+        print('Tensorflow backend detected; Applying memory usage constraints')
+        sess_config = K.tf.ConfigProto(gpu_options=K.tf.GPUOptions(allow_growth=True))
+        ss = K.tf.Session(config=sess_config)
+        K.set_session(ss)
+
+    print('This script is obsolete, please use run.py in predict mode instead.')
+    # main()
