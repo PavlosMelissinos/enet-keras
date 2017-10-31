@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
 from matplotlib import pyplot as plt
+# from keras.utils.vis_utils import plot_model
 
 import numpy as np
 import os
@@ -100,6 +101,8 @@ class Experiment(object):
         autoencoder, _ = model.build(**kwargs)
         if self.model_config['print_summary']:
             autoencoder.summary()
+            # model_filename = self.model_name + '.png'
+            # plot_model(autoencoder, to_file=model_filename, show_shapes=True)
         try:
             h5file = self.model_config['h5file']
             print('Loading from file {}'.format(h5file))

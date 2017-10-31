@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode',
                         nargs='?',
                         type=str,
-                        default='predict',
+                        default='overfit',
                         help='One of train/overfit/data')
     parser.add_argument('--solver',
                         nargs='?',

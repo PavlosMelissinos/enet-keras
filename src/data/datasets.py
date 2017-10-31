@@ -337,12 +337,15 @@ class MSCOCO(Dataset):
 
         ann_mask = self._coco.annToMask(annotation)
 
-        mask_categorical = np.full((ann_mask.shape[0], ann_mask.shape[1], self.num_classes()), low_val, dtype=np.float32)
-        mask_categorical[:, :, 0] = high_val  # every pixel begins as background
+        mask_shape = (ann_mask.shape[0], ann_mask.shape[1], self.num_classes())
+        mask_categorical = np.full(mask_shape, low_val, dtype=np.float32)
+        # every pixel begins as background
+        mask_categorical[:, :, 0] = high_val
 
         class_index = self._cid_to_id[annotation['category_id']]
         mask_categorical[ann_mask > 0, class_index] = high_val
-        mask_categorical[ann_mask > 0, 0] = low_val  # remove background label from pixels of this (non-bg) category
+        # remove background label from pixels of this (non-bg) category
+        mask_categorical[ann_mask > 0, 0] = low_val
         return image, mask_categorical
 
     def _retrieve_instance(self, annotation):
