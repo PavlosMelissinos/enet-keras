@@ -318,8 +318,8 @@ class DryDatasetCaptioningExperiment(CaptioningExperiment):
 
 class OverfittingExperiment(Experiment):
     def __init__(self, data, model, experiment, **kwargs):
-        data['sample_size'] = 50
-        experiment['epochs'] = 2
+        data['sample_size'] = 100
+        experiment['epochs'] = 50
         super(OverfittingExperiment, self).__init__(
             data=data,
             experiment=experiment,
@@ -341,8 +341,42 @@ class OverfittingExperiment(Experiment):
         )
         for inputs, outputs in dataset.flow(single_pass=True):
             predictions = model.predict(inputs)
-            for prediction, output in zip(predictions, outputs['output']):
-                pass
+            for image, prediction, output in zip(inputs['image'], predictions, outputs['output']):
+                # class_name = dataset.CATEGORIES[class_idx]
+
+                plt.rcParams["figure.figsize"] = [4 * 3, 4]
+
+                fig = plt.figure()
+
+                subplot1 = fig.add_subplot(131)
+                subplot1.imshow(image.astype(np.uint8))
+                subplot1.set_title('rgb image')
+                subplot1.axis('off')
+
+                subplot2 = fig.add_subplot(132)
+                # newshape = (image.shape[:2]) + (prediction.shape[-1],)
+                prediction = np.argmax(prediction, axis=-1)
+                newshape = image.shape[:2]
+                prediction = np.reshape(prediction, newshape)
+                subplot2.imshow(prediction, cmap='gray')
+                # subplot2.set_title('{} binary mask'.format(class_name))
+                subplot2.set_title('predicted output')
+                subplot2.axis('off')
+
+                subplot3 = fig.add_subplot(133)
+                # newshape = (image.shape[:2]) + (output.shape[-1],)
+                output = np.argmax(output, axis=-1)
+                newshape = image.shape[:2]
+                output = np.reshape(output, newshape)
+                masked = np.array(output)
+                masked[output == 0] = 0
+                subplot3.imshow(masked, cmap='gray')
+                # subplot3.set_title('{} label'.format(class_name))
+                subplot3.set_title('ground truth labels')
+                subplot3.axis('off')
+
+                fig.tight_layout()
+                plt.show()
         print('End of overfitting experiment')
 
 
