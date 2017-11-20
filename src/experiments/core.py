@@ -93,7 +93,7 @@ class Experiment(object):
         model = select_model(model_name=self.model_name)
         kwargs = self.model_config
         kwargs['nc'] = self.DatasetClass.num_classes()
-        weights = self.DatasetClass.class_weights()
+        # weights = self.DatasetClass.class_weights()
         kwargs['loss'] = [
             'categorical_crossentropy',
             # w_categorical_crossentropy(weights=weights)
@@ -318,8 +318,10 @@ class DryDatasetCaptioningExperiment(CaptioningExperiment):
 
 class OverfittingExperiment(Experiment):
     def __init__(self, data, model, experiment, **kwargs):
-        data['sample_size'] = 100
-        experiment['epochs'] = 50
+        # data['sample_size'] = 100
+        # experiment['epochs'] = 50
+        data['sample_size'] = 20
+        experiment['epochs'] = 30
         super(OverfittingExperiment, self).__init__(
             data=data,
             experiment=experiment,
@@ -327,56 +329,68 @@ class OverfittingExperiment(Experiment):
             **kwargs
         )
 
+    @staticmethod
+    def plot_single(image, target, prediction):
+        # class_name = dataset.CATEGORIES[class_idx]
+
+        plt.rcParams["figure.figsize"] = [4 * 3, 4]
+
+        fig = plt.figure()
+
+        subplot1 = fig.add_subplot(1, 3, 1)
+        subplot1.imshow(image.astype(np.uint8))
+        subplot1.set_title('rgb image')
+        subplot1.axis('off')
+
+        subplot2 = fig.add_subplot(1, 3, 2)
+        # newshape = (image.shape[:2]) + (prediction.shape[-1],)
+        prediction = np.argmax(prediction, axis=-1)
+        newshape = image.shape[:2]
+        prediction = np.reshape(prediction, newshape)
+        subplot2.imshow(prediction, cmap='gray')
+        # subplot2.set_title('{} binary mask'.format(class_name))
+        subplot2.set_title('predicted output')
+        subplot2.axis('off')
+
+        subplot3 = fig.add_subplot(1, 3, 3)
+        # newshape = (image.shape[:2]) + (output.shape[-1],)
+        output = np.argmax(target, axis=-1)
+        newshape = image.shape[:2]
+        output = np.reshape(output, newshape)
+        masked = np.array(output)
+        masked[output == 0] = 0
+        subplot3.imshow(masked, cmap='gray')
+        # subplot3.set_title('{} label'.format(class_name))
+        subplot3.set_title('ground truth labels')
+        subplot3.axis('off')
+
+        fig.tight_layout()
+        plt.show()
+
     def run(self):
         dataset = self.dataset(data_split='train')
         model = self.model()
         model.fit_generator(
-            generator=dataset.flow(),
-            steps_per_epoch=dataset.steps,
+            generator=dataset.flow(batch=False),
+            steps_per_epoch=dataset.steps * dataset.config.batch_size,
             epochs=self.experiment_config['epochs'],
             verbose=1,
             # validation_data=dataset.flow(),
             # validation_steps=dataset.steps,
             initial_epoch=self.experiment_config['completed_epochs'],
         )
-        for inputs, outputs in dataset.flow(single_pass=True):
-            predictions = model.predict(inputs)
-            for image, prediction, output in zip(inputs['image'], predictions, outputs['output']):
-                # class_name = dataset.CATEGORIES[class_idx]
+        # threshold = 0.50
+        threshold = 0.
+        for inputs, outputs in dataset.flow(batch=False, single_pass=True):
+            # inputs['image'] = np.expand_dims(inputs['image'], axis=0)
+            # outputs['output'] = np.expand_dims(outputs['output'], axis=0)
+            prediction = model.predict(inputs)[0]
+            prediction[prediction < threshold] = 0
+            image = inputs['image'][0]
+            target = outputs['output'][0]
+            print(np.count_nonzero(np.argmax(prediction, axis=-1) == np.argmax(target, axis=-1)))
+            self.plot_single(image, target, prediction)
 
-                plt.rcParams["figure.figsize"] = [4 * 3, 4]
-
-                fig = plt.figure()
-
-                subplot1 = fig.add_subplot(131)
-                subplot1.imshow(image.astype(np.uint8))
-                subplot1.set_title('rgb image')
-                subplot1.axis('off')
-
-                subplot2 = fig.add_subplot(132)
-                # newshape = (image.shape[:2]) + (prediction.shape[-1],)
-                prediction = np.argmax(prediction, axis=-1)
-                newshape = image.shape[:2]
-                prediction = np.reshape(prediction, newshape)
-                subplot2.imshow(prediction, cmap='gray')
-                # subplot2.set_title('{} binary mask'.format(class_name))
-                subplot2.set_title('predicted output')
-                subplot2.axis('off')
-
-                subplot3 = fig.add_subplot(133)
-                # newshape = (image.shape[:2]) + (output.shape[-1],)
-                output = np.argmax(output, axis=-1)
-                newshape = image.shape[:2]
-                output = np.reshape(output, newshape)
-                masked = np.array(output)
-                masked[output == 0] = 0
-                subplot3.imshow(masked, cmap='gray')
-                # subplot3.set_title('{} label'.format(class_name))
-                subplot3.set_title('ground truth labels')
-                subplot3.axis('off')
-
-                fig.tight_layout()
-                plt.show()
         print('End of overfitting experiment')
 
 
@@ -388,7 +402,7 @@ class SemanticSegmentationExperiment(Experiment):
         model = select_model(model_name=self.model_name)
         kwargs = self.model_config
         kwargs['nc'] = self.DatasetClass.num_classes()
-        weights = self.DatasetClass.class_weights()
+        # weights = self.DatasetClass.class_weights()
         kwargs['loss'] = [
             'categorical_crossentropy',
             # w_categorical_crossentropy(weights=weights)

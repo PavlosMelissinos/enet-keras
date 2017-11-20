@@ -24,14 +24,14 @@ def build(nc, w, h,
           optimizer='adam',
           **kwargs):
     data_shape = w * h if None not in (w, h) else -1  # TODO: -1 or None?
-    inp = Input(shape=(h, w, 3))
+    inp = Input(shape=(h, w, 3), name='image')
     enet = encoder.build(inp)
     enet = decoder.build(enet, nc=nc)
     name = 'enet_naive_upsampling'
 
     enet = Reshape((data_shape, nc))(enet)  # TODO: need to remove data_shape for multi-scale training
 
-    enet = Activation('softmax')(enet)
+    enet = Activation('softmax', name='output')(enet)
     model = Model(inputs=inp, outputs=enet)
 
     model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy', 'mean_squared_error'])
