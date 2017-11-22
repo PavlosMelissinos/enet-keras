@@ -3,6 +3,9 @@ from keras.models import Input, Model
 from keras.layers import Conv2D, Concatenate, MaxPooling2D, Conv2DTranspose
 from keras.layers import UpSampling2D, Dropout, BatchNormalization
 from keras.optimizers import Adam
+from keras import backend as K
+from keras.layers import Reshape
+from keras.layers import Activation
 
 '''
 U-Net: Convolutional Networks for Biomedical Image Segmentation
@@ -56,10 +59,17 @@ def build(h, w, nc, loss='categorical_crossentropy',
           dropout=0.5, batchnorm=False, maxpool=True, upconv=True,
           residual=False, **kwargs):
     i = Input(shape=(h, w, 3), name='image')
-    o = level_block(i, start_ch, depth, inc_rate, activation,
-                    dropout, batchnorm, maxpool, upconv, residual)
-    o = Conv2D(nc, 1, activation='softmax', name='output')(o)
-    model = Model(inputs=i, outputs=o)
+    conv_out = level_block(i, start_ch, depth, inc_rate, activation,
+                           dropout, batchnorm, maxpool, upconv, residual)
+    conv_out = Conv2D(nc, 1, activation='softmax', name='output')(conv_out)
+
+    hw = K.int_shape(conv_out)[1] * K.int_shape(conv_out)[2]
+    target_shape = (hw, nc)
+    decoder = Reshape(target_shape=target_shape)(conv_out)
+
+    decoder = Activation('softmax', name='output')(decoder)
+
+    model = Model(inputs=i, outputs=decoder)
     name = 'unet2'
 
     if optimizer is None:
