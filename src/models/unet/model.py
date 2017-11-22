@@ -14,7 +14,7 @@ def build(nc, w, h,
           optimizer=None,
           metrics=None,
           **kwargs):
-    inputs = Input(shape=(w, h, 3))
+    inputs = Input(shape=(w, h, 3), name='image')
 
     '''
     unet with crop(because padding = valid) 
@@ -169,7 +169,7 @@ def build(nc, w, h,
                    kernel_initializer='he_normal')(conv9)
     conv9 = Conv2D(2, 3, activation='relu', padding='same',
                    kernel_initializer='he_normal')(conv9)
-    conv10 = Conv2D(nc, 1, activation='softmax')(conv9)
+    conv10 = Conv2D(nc, 1, activation='softmax', name='output')(conv9)
 
     model = Model(input=inputs, output=conv10)
 
