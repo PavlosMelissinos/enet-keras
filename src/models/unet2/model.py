@@ -57,3 +57,7 @@ def build(h, w, nc, start_ch=64, depth=4, inc_rate=2., activation='relu',
     model = Model(inputs=i, outputs=o)
     name = 'unet2'
     return model, name
+
+
+def transfer_weights(model, **kwargs):
+    return model
