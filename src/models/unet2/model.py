@@ -54,4 +54,6 @@ def build(h, w, nc, start_ch=64, depth=4, inc_rate=2., activation='relu',
     o = level_block(i, start_ch, depth, inc_rate, activation,
                     dropout, batchnorm, maxpool, upconv, residual)
     o = Conv2D(nc, 1, activation='softmax', name='output')(o)
-    return Model(inputs=i, outputs=o)
+    model = Model(inputs=i, outputs=o)
+    name = 'unet2'
+    return model, name
