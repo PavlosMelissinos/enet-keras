@@ -61,7 +61,7 @@ def build(h, w, nc, loss='categorical_crossentropy',
     i = Input(shape=(h, w, 3), name='image')
     conv_out = level_block(i, start_ch, depth, inc_rate, activation,
                            dropout, batchnorm, maxpool, upconv, residual)
-    conv_out = Conv2D(nc, 1, activation='softmax', name='output')(conv_out)
+    conv_out = Conv2D(nc, 1, activation='softmax')(conv_out)
 
     hw = K.int_shape(conv_out)[1] * K.int_shape(conv_out)[2]
     target_shape = (hw, nc)
