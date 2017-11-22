@@ -2,6 +2,7 @@
 from keras.models import Input, Model
 from keras.layers import Conv2D, Concatenate, MaxPooling2D, Conv2DTranspose
 from keras.layers import UpSampling2D, Dropout, BatchNormalization
+from keras.optimizers import Adam
 
 '''
 U-Net: Convolutional Networks for Biomedical Image Segmentation
@@ -47,7 +48,11 @@ def level_block(m, dim, depth, inc, acti, do, bn, mp, up, res):
     return m
 
 
-def build(h, w, nc, start_ch=64, depth=4, inc_rate=2., activation='relu',
+def build(h, w, nc, loss='categorical_crossentropy',
+          # optimizer='adadelta'):
+          optimizer=None,
+          metrics=None,
+          start_ch=64, depth=4, inc_rate=2., activation='relu',
           dropout=0.5, batchnorm=False, maxpool=True, upconv=True,
           residual=False, **kwargs):
     i = Input(shape=(h, w, 3), name='image')
@@ -56,6 +61,14 @@ def build(h, w, nc, start_ch=64, depth=4, inc_rate=2., activation='relu',
     o = Conv2D(nc, 1, activation='softmax', name='output')(o)
     model = Model(inputs=i, outputs=o)
     name = 'unet2'
+
+    if optimizer is None:
+        optimizer = Adam(lr=1e-4)
+    if metrics is None:
+        metrics = ['accuracy']
+    model.compile(optimizer=optimizer, loss=loss,
+                  metrics=metrics)
+
     return model, name
 
 
