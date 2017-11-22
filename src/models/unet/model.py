@@ -184,3 +184,17 @@ def build(nc, w, h,
     name = 'unet'
 
     return model, name
+
+
+def transfer_weights(model, **kwargs):
+    return model
+
+
+class UNet(object):
+    def __init__(self, h, w, nc):
+        self.h = h
+        self.w = w
+        self.nc = nc
+
+    def build(self):
+        return build(self.h, self.w, self.nc)
