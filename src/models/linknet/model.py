@@ -7,6 +7,7 @@ from keras.layers.normalization import BatchNormalization as BN
 from keras.layers.pooling import MaxPooling2D
 from keras.engine.topology import Input
 from keras.engine.training import Model
+from keras.optimizers import Adam, Nadam
 
 
 def initial_block(x):
@@ -121,12 +122,15 @@ def build(nc, w, h,
 
     hw = K.int_shape(decoder)[1] * K.int_shape(decoder)[2]
     target_shape = (hw, nc)
-    decoder = Reshape(target_shape=target_shape, name='output')(decoder)
+    decoder = Reshape(target_shape=target_shape)(decoder)
+    decoder = Activation('softmax', name='output')(decoder)
 
     model = Model(inputs=inp, outputs=decoder)
 
     if metrics is None:
         metrics = ['accuracy']
+    # optimizer = Adam(lr=0.01)
+    # optimizer = Nadam()
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     return model, name
