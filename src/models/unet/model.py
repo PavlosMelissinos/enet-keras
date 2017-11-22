@@ -6,6 +6,8 @@ from keras.layers.pooling import MaxPooling2D
 from keras.models import Model
 from keras.layers.merge import Concatenate
 from keras.optimizers import Adam
+from keras import backend as K
+from keras.layers.core import Activation, Reshape
 
 
 def build(nc, w, h,
@@ -169,9 +171,17 @@ def build(nc, w, h,
                    kernel_initializer='he_normal')(conv9)
     conv9 = Conv2D(2, 3, activation='relu', padding='same',
                    kernel_initializer='he_normal')(conv9)
-    conv10 = Conv2D(nc, 1, activation='softmax', name='output')(conv9)
 
-    model = Model(input=inputs, output=conv10)
+    conv10 = Conv2D(nc, 1)(conv9)
+
+    hw = K.int_shape(conv10)[1] * K.int_shape(conv10)[2]
+    target_shape = (hw, nc)
+    decoder = Reshape(target_shape=target_shape)(conv10)
+
+    decoder = Activation('softmax', name='output')(decoder)
+
+
+    model = Model(input=inputs, output=decoder)
 
     if optimizer is None:
         optimizer = Adam(lr=1e-4)
