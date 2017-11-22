@@ -181,4 +181,6 @@ def build(nc, w, h,
     model.compile(optimizer=optimizer, loss=loss,
                   metrics=metrics)
 
-    return model
+    name = 'unet'
+
+    return model, name
