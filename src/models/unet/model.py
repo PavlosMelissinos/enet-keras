@@ -180,7 +180,6 @@ def build(nc, w, h,
 
     decoder = Activation('softmax', name='output')(decoder)
 
-
     model = Model(input=inputs, output=decoder)
 
     if optimizer is None:

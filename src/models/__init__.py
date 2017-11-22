@@ -9,6 +9,10 @@ def select_model(model_name):
         from .enet_naive_upsampling import model
     elif model_name == 'linknet':
         from .linknet import model
+    elif model_name == 'unet':
+        from .unet import model
+    elif model_name == 'unet2':
+        from .unet2 import model
     elif model_name == 'icnet':
         from .icnet import model
     else:
