@@ -1,7 +1,8 @@
 # ENet-keras
 
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/PavlosMelissinos/enet-keras/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/PavlosMelissinos/enet-keras/blob/master/LICENSE)
 ![](https://reposs.herokuapp.com/?path=PavlosMelissinos/enet-keras&style=flat&color=red)
+[![Read the Docs](https://img.shields.io/readthedocs/pip.svg)]()
 
 This is an implementation of [ENet: A Deep Neural Network Architecture for Real-Time Semantic Segmentation](https://arxiv.org/abs/1606.02147), ported from [ENet-training](https://github.com/e-lab/ENet-training) ([lua-torch](https://github.com/torch/torch7)) to [keras](https://github.com/fchollet/keras).
 
