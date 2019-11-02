@@ -62,8 +62,8 @@ def from_torch(torch_model):
 
 if __name__ == "__main__":
     DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-    torch_model = os.path.join(DIR_PATH, os.pardir, os.pardir, 'models', 'pretrained', 'model-best.net')
+    torch_model = os.path.join(DIR_PATH, os.pardir, os.pardir, 'pretrained', 'model-best.net')
     weights = from_torch(torch_model=torch_model)
     # weights = [module['weight'] for module in all_enet_modules]
-    with open('../models/pretrained/torch_enet.pkl', 'wb') as fout:
+    with open(os.path.join(DIR_PATH, os.pardir, os.pardir, 'pretrained', './pretrained/torch_enet.pkl'), 'wb') as fout:
         pkl.dump(obj=weights, file=fout)
