@@ -7,7 +7,7 @@ from keras.layers.normalization import BatchNormalization
 from ..layers.pooling import MaxUnpooling2D
 
 
-def bottleneck(encoder, output, upsample=False, reverse_module=False):
+def bottleneck(encoder, output: int, upsample=False, reverse_module=False):
     internal = output // 4
 
     x = Conv2D(internal, (1, 1), use_bias=False)(encoder)
