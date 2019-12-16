@@ -5,6 +5,6 @@
     "dw": 512,
     "nc": 81,
     "h5file": "enet_best",
-    "model_name": "enet",
+    "model_name": "enet_unpooling",
     "test_sample_size": null
 }
