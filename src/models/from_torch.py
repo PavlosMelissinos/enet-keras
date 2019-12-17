@@ -5,6 +5,7 @@ import numpy as np
 import os
 import pickle as pkl
 import torchfile
+from src.definitions import PROJECT_ROOT
 
 CONV_TRANSPOSE = (2, 3, 1, 0)
 
@@ -61,9 +62,8 @@ def from_torch(torch_model):
 
 
 if __name__ == "__main__":
-    DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-    torch_model = os.path.join(DIR_PATH, os.pardir, os.pardir, 'pretrained', 'model-best.net')
+    torch_model = PROJECT_ROOT / 'pretrained' / 'model-best.net'
     weights = from_torch(torch_model=torch_model)
     # weights = [module['weight'] for module in all_enet_modules]
-    with open(os.path.join(DIR_PATH, os.pardir, os.pardir, 'pretrained', 'torch_enet.pkl'), 'wb') as fout:
+    with (PROJECT_ROOT / 'pretrained' / 'torch_enet.pkl').open(mode='wb') as fout:
         pkl.dump(obj=weights, file=fout)
