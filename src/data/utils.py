@@ -1,41 +1,34 @@
 # coding=utf-8
 from __future__ import absolute_import, division
+import os
+from typing import Union
 
 from keras.preprocessing.image import img_to_array, array_to_img
-from PIL import Image as PILImage, ImageOps
-import errno
 import numpy as np
-import os
+from pathlib import Path
+from PIL import Image as PILImage, ImageOps
 
 
 # I/O
 
-def files_under(path):
-    for f in os.listdir(path):
-        item = os.path.join(path, f)
-        if os.path.isfile(item):
-            yield item
-    # return [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+def files_under(path: Path):
+    for f in path.glob("*"):
+        if f.is_file():
+            yield f
 
 
-def basename_without_ext(path_to_file):
-    bn = os.path.basename(path_to_file)
-    return os.path.splitext(bn)[0]
+def basename_without_ext(path_to_file: Path):
+    return path_to_file.stem
 
 
-def ensure_dir(dir_path):
+def ensure_dir(dir_path: Union[Path, str]):
     """
     Creates folder f if it doesn't exist
     :param dir_path: directory path
     :return: 
     """
-    try:
-        os.makedirs(dir_path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(dir_path):
-            pass
-        else:
-            raise
+    path = dir_path if isinstance(dir_path, Path) else Path(dir_path)
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def normalize(img):
