@@ -20,16 +20,15 @@ On pip: `pip install -r requirements.txt`
 
 #### One-time dependencies
 
-`pip install Cython` in order to make pycocotools.
+`Cython` in order to make pycocotools.
 
-`pip install torchfile` in order to convert the torch model to a keras one.
+`torchfile` in order to convert the torch model to a keras one.
 
 
 #### Build pycocotools
 
 ```
-cd src/data/pycocotools/
-make
+make pycocotools
 ```
 
 ### Get code
@@ -40,7 +39,7 @@ make
 
 ```
 cd enet-keras
-./setup.sh
+make setup
 ```
 
 The setup script only sets up some directories and converts the model to an appropriate format.
@@ -51,7 +50,7 @@ MSCOCO is only downloaded on demand.
 
 ### Train on MS-COCO
 
-`./train.sh`
+`make train`
 
 ## Remaining tasks
 
