@@ -25,20 +25,22 @@ On pip: `pip install -r requirements.txt`
 `torchfile` in order to convert the torch model to a keras one.
 
 
+### Get code
+
+```
+git clone https://github.com/PavlosMelissinos/enet-keras.git
+cd enet-keras
+```
+
 #### Build pycocotools
 
 ```
 make pycocotools
 ```
 
-### Get code
-
-`git clone https://github.com/PavlosMelissinos/enet-keras.git`
-
 ### Set up data/model
 
 ```
-cd enet-keras
 make setup
 ```
 
