@@ -1,6 +1,7 @@
 bleach==1.5.0
 certifi==2016.2.28
 cycler==0.10.0
+gsutil=
 h5py==2.7.1
 html5lib==0.9999999
 Keras==2.0.8
@@ -10,6 +11,7 @@ numpy==1.13.3
 olefile==0.44
 Pillow==6.2.0
 protobuf==3.4.0
+pycocotools==2.0.0
 pyparsing==2.2.0
 python-dateutil==2.6.1
 pytz==2017.2
