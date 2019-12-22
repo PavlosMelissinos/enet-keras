@@ -16,6 +16,7 @@ dependencies:
 - pip:
   - bleach==1.5.0
   - cycler==0.10.0
+  - gsutil=4.46
   - h5py==2.7.1
   - html5lib==0.9999999
   - keras==2.0.8
@@ -25,6 +26,7 @@ dependencies:
   - olefile==0.44
   - pillow==4.3.0
   - protobuf==3.4.0
+  - pycocotools==2.0.0
   - pyparsing==2.2.0
   - python-dateutil==2.6.1
   - pytz==2017.2
