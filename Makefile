@@ -5,10 +5,6 @@ setup:
 	wget -NP pretrained https://github.com/PavlosMelissinos/enet-keras/releases/download/v0.0.1-model/model-best.net
 	python src/models/from_torch.py
 
-pycocotools:
-	pip install Cython
-	cd src/data/pycocotools && make
-
 train:
 	export PYTHONPATH=".":$PYTHONPATH
 	#LD_LIBRARY_PATH=/usr/local/cuda/lib64
