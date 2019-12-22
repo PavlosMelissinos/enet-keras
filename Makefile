@@ -1,11 +1,10 @@
 setup:
+	pip install torchfile==0.1.0
 	cp config/solver.json.default config/solver.json
 	mkdir -p pretrained
 	wget -NP pretrained https://github.com/PavlosMelissinos/enet-keras/releases/download/v0.0.1-model/model-best.net
-	export PYTHONPATH=".":$PYTHONPATH && python src/models/from_torch.py
-
-pycocotools:
-	cd src/data/pycocotools && make
+	export PYTHONPATH=".":$PYTHONPATH
+	python src/models/from_torch.py
 
 train:
 	export PYTHONPATH=".":$PYTHONPATH
