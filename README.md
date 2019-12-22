@@ -20,22 +20,13 @@ On pip: `pip install -r requirements.txt`
 
 #### One-time dependencies
 
-`Cython` in order to make pycocotools.
-
 `torchfile` in order to convert the torch model to a keras one.
-
 
 ### Get code
 
 ```
 git clone https://github.com/PavlosMelissinos/enet-keras.git
 cd enet-keras
-```
-
-#### Build pycocotools
-
-```
-make pycocotools
 ```
 
 ### Set up data/model
