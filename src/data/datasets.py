@@ -7,8 +7,8 @@ import os
 import subprocess
 import time
 
-from .pycocotools import mask
-from .pycocotools.coco import COCO
+from pycocotools import mask
+from pycocotools.coco import COCO
 from . import utils
 from collections import defaultdict
 
@@ -276,6 +276,9 @@ class MSCOCO(Dataset):
         If the files are already present, only the hashes are checked.
         """
         # http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
+        if subprocess.call(['which', 'gsutil']) == 1:
+            print('gsutil missing from your system, please install (pip install gsutil) and try again...')
+            exit(1)
         data_prefixes = [self.config.data_type]
 
         dataset_root = self.config.data_dir['dataset_root']
