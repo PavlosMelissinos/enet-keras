@@ -1,7 +1,7 @@
 bleach==1.5.0
 certifi==2016.2.28
 cycler==0.10.0
-gsutil=4.46
+gsutil==4.46
 h5py==2.7.1
 html5lib==0.9999999
 Keras==2.0.8
