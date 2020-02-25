@@ -274,8 +274,8 @@ class MSCOCO(Dataset):
 
         print('Syncing images. Please wait, this might take a while...')
         for prefix in data_prefixes:
-            print('Downloading {}...'.format(prefix))
-            url = 'gs://images.cocodataset.org/{}'.format(prefix)
+            print(f'Downloading {prefix}...')
+            url = f'gs://images.cocodataset.org/{prefix}'
             target_dir = os.path.join(dataset_root, prefix)
             utils.ensure_dir(target_dir)
             subprocess.call(['gsutil', '-m', 'rsync', url, target_dir])
