@@ -5,7 +5,9 @@ import numpy as np
 import os
 import pickle as pkl
 import torchfile
-from src.definitions import PROJECT_ROOT
+from src.definitions import get_project_root
+
+PROJECT_ROOT = get_project_root()
 
 CONV_TRANSPOSE = (2, 3, 1, 0)
 

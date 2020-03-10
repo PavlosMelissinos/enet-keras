@@ -13,6 +13,7 @@ This is an implementation of [ENet: A Deep Neural Network Architecture for Real-
 
 #### Dependencies
 
+On poetry: `poetry update`
 
 On Anaconda/miniconda: `conda env create -f environment.yml`
 

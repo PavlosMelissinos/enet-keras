@@ -1,5 +1,4 @@
 setup:
-	pip install torchfile==0.1.0
 	cp config/solver.json.default config/solver.json
 	mkdir -p pretrained
 	wget -NP pretrained https://github.com/PavlosMelissinos/enet-keras/releases/download/v0.0.1-model/model-best.net
