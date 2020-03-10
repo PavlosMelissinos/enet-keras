@@ -6,13 +6,14 @@ authors = ["Pavlos Melissinos <pmelissi@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-gsutil = "4.46"
+#gsutil = "4.46"
 matplotlib = "3.1.2"
 pycocotools = "2.0.0"
 python = "3.6.10"
 Keras = "2.0.8"
 tensorflow = "1.5.0"
 Pillow = "6.2.0"
+requests = "2.23.0"
 
 # Optional dependencies (extras)
 torchfile = { version = "0.1.0"}
