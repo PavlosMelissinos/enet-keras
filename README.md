@@ -9,20 +9,6 @@ This is an implementation of [ENet: A Deep Neural Network Architecture for Real-
 
 ## Installation
 
-### Setup environment
-
-#### Dependencies
-
-On poetry: `poetry update`
-
-On Anaconda/miniconda: `conda env create -f environment.yml`
-
-On pip: `pip install -r requirements.txt`
-
-#### One-time dependencies
-
-`torchfile` in order to convert the torch model to a keras one.
-
 ### Get code
 
 ```
@@ -30,15 +16,21 @@ git clone https://github.com/PavlosMelissinos/enet-keras.git
 cd enet-keras
 ```
 
+### Setup environment
+
+#### Dependencies
+
+On poetry: `poetry install`
+
+On Anaconda/miniconda: `conda env create -f environment.yml`
+
+On pip: `pip install -r requirements.txt`
+
 ### Set up data/model
 
-```
-make setup
-```
+`make setup`
 
 The setup script only sets up some directories and converts the model to an appropriate format.
-
-MSCOCO is only downloaded on demand. 
 
 ## Usage
 
