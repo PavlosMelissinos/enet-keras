@@ -185,8 +185,9 @@ class MSCOCO(Dataset):
         # ensure data exists locally and load dataset
         ann_file = self._config.annotation_file
         if not os.path.isfile(ann_file):
-            print('Dataset not found. Downloading...')
-            self.download()
+            print('Dataset not found. Aborting...')
+            exit()
+            # self.download()
         print('Initializing MS-COCO: Loading annotations from {}'.format(ann_file))
         self._coco = COCO(ann_file)
 
