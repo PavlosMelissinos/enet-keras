@@ -44,7 +44,7 @@ def build(nc, w, h,
           **kwargs):
     # data_shape = input_shape[0] * input_shape[1] if input_shape and None not in input_shape else None
     data_shape = w * h if None not in (w, h) else -1  # TODO: -1 or None?
-    inp = Input(shape=(h, w, 3))
+    inp = Input(shape=(h, w, 3), name='image')
     shapes = valid_shapes(inp)
 
     if h < 161 or w < 161:
@@ -55,7 +55,7 @@ def build(nc, w, h,
     out = decoder.build(inp=inp, encoder=out, nc=nc, valid_shapes=shapes)
 
     out = Reshape((data_shape, nc))(out)  # TODO: need to remove data_shape for multi-scale training
-    out = Activation('softmax')(out)
+    out = Activation('softmax', name='output')(out)
     model = Model(inputs=inp, outputs=out)
 
     model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy', 'mean_squared_error'])

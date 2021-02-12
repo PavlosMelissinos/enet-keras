@@ -10,12 +10,17 @@ import time
 from pycocotools import mask
 from pycocotools.coco import COCO
 from . import utils
+from collections import defaultdict
 
 
 class Dataset(with_metaclass(abc.ABCMeta, object)):
     @abc.abstractmethod
     def flow(self, transform=True, batch=True, single_pass=False,
              *args, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def get_stats(self):
         pass
 
     @property
@@ -146,8 +151,8 @@ class MSCOCO(Dataset):
     #     0.0179, 0.0039, 0.0113, 0.0141, 0.0080, 0.0040, 0.0180, 0.0083
     # ]
 
-    # CLASS_FREQUENCIES = [0.1] + [1 / 80] * 80
-    CLASS_FREQUENCIES = [1.0] * 81
+    CLASS_FREQUENCIES = [0.1] + [1 / 80] * 80
+    # CLASS_FREQUENCIES = [1.0] * 81
 
     def __init__(self, **kwargs):
         """
@@ -219,6 +224,13 @@ class MSCOCO(Dataset):
         self._image_ids = np.random.choice(image_ids,
                                            size=min(len(image_ids), self._sample_size),
                                            replace=False)
+
+        # class_counts = self.get_stats()
+        # total_count = sum(class_counts.values())
+        # class_freqs = {c:cf/total_count for c, cf in class_counts.items()}
+        # class_freqs = defaultdict(lambda: 1, class_freqs)
+        # class_freqs = [class_freqs[cid] for cid in range(len(self.CATEGORIES))]
+        # MSCOCO.CLASS_FREQUENCIES = class_freqs
 
     @property
     def categories(self):
@@ -307,6 +319,15 @@ class MSCOCO(Dataset):
             utils.unzip_and_remove(zipped_file=zipfile)
         print('Done')
 
+    def get_stats(self):
+        class_frequency_counter = defaultdict(int)
+        for image, mask in self._combined_sample_generator():
+            flat_mask = np.argmax(mask, axis=-1)
+            unique_classes, counts = np.unique(flat_mask, return_counts=True)
+            for uc, count in zip(unique_classes, counts):
+                class_frequency_counter[uc] += count
+        return class_frequency_counter
+
     def load(self, data_dir, data_type):
         annotation_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
         print('Initializing MS-COCO: Loading annotations from {}'.format(annotation_file))
@@ -341,12 +362,15 @@ class MSCOCO(Dataset):
 
         ann_mask = self._coco.annToMask(annotation)
 
-        mask_categorical = np.full((ann_mask.shape[0], ann_mask.shape[1], self.num_classes()), low_val, dtype=np.float32)
-        mask_categorical[:, :, 0] = high_val  # every pixel begins as background
+        mask_shape = (ann_mask.shape[0], ann_mask.shape[1], self.num_classes())
+        mask_categorical = np.full(mask_shape, low_val, dtype=np.float32)
+        # every pixel begins as background
+        mask_categorical[:, :, 0] = high_val
 
         class_index = self._cid_to_id[annotation['category_id']]
         mask_categorical[ann_mask > 0, class_index] = high_val
-        mask_categorical[ann_mask > 0, 0] = low_val  # remove background label from pixels of this (non-bg) category
+        # remove background label from pixels of this (non-bg) category
+        mask_categorical[ann_mask > 0, 0] = low_val
         return image, mask_categorical
 
     def _retrieve_instance(self, annotation):
@@ -482,7 +506,8 @@ class MSCOCO(Dataset):
                         yield target_images, target_labels
             elif transform:
                 for img, lbl in naive_flow():
-                    yield self.transform(img, lbl)
+                    img1, lbl1 = self.transform(img, lbl)
+                    yield np.expand_dims(img1, axis=0), np.expand_dims(lbl1, axis=0)
             else:
                 for img, lbl in naive_flow():
                     yield img, lbl
